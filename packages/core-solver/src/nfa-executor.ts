@@ -79,8 +79,7 @@ export function nfaMove(
  */
 export function executeNFA(graph: SolverGraphInput, inputString: string): NFAExecutionResult {
   const validation: DFAValidationResult = validateNFA(graph);
-  const fatalErrors = validation.errors.filter((e) => e.code !== 'MISSING_ACCEPTING_STATE');
-  if (fatalErrors.length > 0) {
+  if (!validation.isValid) {
     return {
       isAccepted: false,
       finalStates: [],

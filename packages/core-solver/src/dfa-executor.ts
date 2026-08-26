@@ -26,8 +26,7 @@ import { tokenizeInputStringStrict } from './tokenization';
  */
 export function executeDFA(graph: SolverGraphInput, inputString: string): DFAExecutionResult {
   const validation = validateDFA(graph);
-  const fatalErrors = validation.errors.filter((e) => e.code !== 'MISSING_ACCEPTING_STATE');
-  if (fatalErrors.length > 0) {
+  if (!validation.isValid) {
     return {
       isAccepted: false,
       finalStateId: null,

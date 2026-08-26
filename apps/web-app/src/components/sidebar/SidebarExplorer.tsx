@@ -1,28 +1,22 @@
 import React, { useState } from 'react';
-import {
-  Zap,
-  Layers,
-  Binary,
-  CheckCircle2,
-  Sparkles,
-  ArrowRightLeft,
-  Search,
-  Code,
-} from 'lucide-react';
 import { useGraph } from '../../context/GraphContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { AutomatonType } from '@project-zero/shared';
+import { Code, ArrowRightLeft, Zap } from 'lucide-react';
 import { convertNfaToDfa, minimizeDFA } from '@project-zero/core-solver';
 import { RegexModal } from '../modals/RegexModal';
 
 export const SidebarExplorer: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'create' | 'convert' | 'analyze' | 'templates'>('create');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'create' | 'convert' | 'templates'>('create');
   const [isRegexModalOpen, setIsRegexModalOpen] = useState(false);
   const { nodes, edges, machineType, replaceMachine, setMachineType, setLastMinimizationResult, setLastRegexResult } = useGraph();
   const { expandPanel, setActiveInspectorTab } = useWorkspace();
 
+  const hasInitialState = React.useMemo(() => nodes.some((n) => n.isInitial), [nodes]);
+  const hasAcceptingState = React.useMemo(() => nodes.some((n) => n.isAccepting), [nodes]);
+  const isStructurallyValidFA = hasInitialState && hasAcceptingState;
+
   const isGraphNFA = React.useMemo(() => {
+    if (!isStructurallyValidFA) return false;
     if (edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '')) return true;
     for (const node of nodes) {
       const seen = new Set<string>();
@@ -33,7 +27,12 @@ export const SidebarExplorer: React.FC = () => {
       }
     }
     return false;
-  }, [nodes, edges]);
+  }, [nodes, edges, isStructurallyValidFA]);
+
+  const isGraphDFA = React.useMemo(() => {
+    if (!isStructurallyValidFA) return false;
+    return !isGraphNFA;
+  }, [isStructurallyValidFA, isGraphNFA]);
 
   const handleNfaToDfaConversion = () => {
     const res = convertNfaToDfa({ nodes, edges });
@@ -51,7 +50,6 @@ export const SidebarExplorer: React.FC = () => {
     setActiveInspectorTab('explanation');
   };
 
-  // On initial mount, populate canvas with default DFA if canvas is empty
   React.useEffect(() => {
     if (nodes.length === 0) {
       replaceMachine(
@@ -60,101 +58,123 @@ export const SidebarExplorer: React.FC = () => {
           { id: 'q1', label: 'q1', x: 400, y: 200, isInitial: false, isAccepting: false },
         ],
         [
-          { id: 'e0', sourceNodeId: 'q0', targetNodeId: 'q1', label: '0' },
-          { id: 'e1', sourceNodeId: 'q1', targetNodeId: 'q0', label: '0' },
-          { id: 'e2', sourceNodeId: 'q0', targetNodeId: 'q0', label: '1' },
-          { id: 'e3', sourceNodeId: 'q1', targetNodeId: 'q1', label: '1' },
+          { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q1', label: 'a' },
+          { id: 'e2', sourceNodeId: 'q1', targetNodeId: 'q0', label: 'b' },
         ],
-        'DFA'
+        'FA'
       );
     }
   }, []);
 
-  const handleStartBlank = (type: AutomatonType) => {
+  const handleStartBlank = (type: 'FA' | 'PDA' | 'TM') => {
     setMachineType(type);
-    replaceMachine([], [], type);
-  };
 
-  const handleLoadExample = (id: string) => {
-    if (id === 'dfa-1') {
+    if (type === 'FA') {
       replaceMachine(
         [
           { id: 'q0', label: 'q0', x: 200, y: 200, isInitial: true, isAccepting: true },
           { id: 'q1', label: 'q1', x: 400, y: 200, isInitial: false, isAccepting: false },
         ],
         [
-          { id: 'e0', sourceNodeId: 'q0', targetNodeId: 'q1', label: '0' },
-          { id: 'e1', sourceNodeId: 'q1', targetNodeId: 'q0', label: '0' },
-          { id: 'e2', sourceNodeId: 'q0', targetNodeId: 'q0', label: '1' },
-          { id: 'e3', sourceNodeId: 'q1', targetNodeId: 'q1', label: '1' },
+          { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q1', label: 'a' },
+          { id: 'e2', sourceNodeId: 'q1', targetNodeId: 'q0', label: 'b' },
         ],
-        'DFA'
+        'FA'
       );
-    } else if (id === 'nfa-1') {
+    } else if (type === 'PDA') {
       replaceMachine(
         [
-          { id: 'q0', label: 'q0', x: 150, y: 200, isInitial: true, isAccepting: false },
-          { id: 'q1', label: 'q1', x: 320, y: 200, isInitial: false, isAccepting: false },
-          { id: 'q2', label: 'q2', x: 490, y: 200, isInitial: false, isAccepting: true },
+          { id: 'q0', label: 'q0', x: 200, y: 200, isInitial: true, isAccepting: false },
+          { id: 'q1', label: 'q1', x: 450, y: 200, isInitial: false, isAccepting: true },
         ],
         [
-          { id: 'e0', sourceNodeId: 'q0', targetNodeId: 'q0', label: '0, 1' },
+          { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q0', label: 'a, Z0 -> aZ0' },
+          { id: 'e2', sourceNodeId: 'q0', targetNodeId: 'q0', label: 'a, a -> aa' },
+          { id: 'e3', sourceNodeId: 'q0', targetNodeId: 'q1', label: 'b, a -> ε' },
+          { id: 'e4', sourceNodeId: 'q1', targetNodeId: 'q1', label: 'b, a -> ε' },
+        ],
+        'PDA'
+      );
+    } else if (type === 'TM') {
+      replaceMachine(
+        [
+          { id: 'q0', label: 'q0', x: 200, y: 200, isInitial: true, isAccepting: false },
+          { id: 'q1', label: 'q1', x: 450, y: 200, isInitial: false, isAccepting: true },
+        ],
+        [
+          { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q0', label: '1 -> 1, R' },
+          { id: 'e2', sourceNodeId: 'q0', targetNodeId: 'q1', label: '□ -> 1, S' },
+        ],
+        'TM'
+      );
+    }
+  };
+
+  const handleLoadExample = (exampleId: string) => {
+    if (exampleId === 'dfa-1') {
+      setMachineType('FA');
+      replaceMachine(
+        [
+          { id: 'q0', label: 'q0', x: 200, y: 200, isInitial: true, isAccepting: true },
+          { id: 'q1', label: 'q1', x: 420, y: 200, isInitial: false, isAccepting: false },
+        ],
+        [
           { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q1', label: '0' },
-          { id: 'e2', sourceNodeId: 'q1', targetNodeId: 'q2', label: '1' },
+          { id: 'e2', sourceNodeId: 'q1', targetNodeId: 'q0', label: '0' },
+          { id: 'e3', sourceNodeId: 'q0', targetNodeId: 'q0', label: '1' },
+          { id: 'e4', sourceNodeId: 'q1', targetNodeId: 'q1', label: '1' },
         ],
-        'NFA'
+        'FA'
       );
-    } else if (id === 'pda-1') {
+    } else if (exampleId === 'nfa-1') {
+      setMachineType('FA');
       replaceMachine(
         [
           { id: 'q0', label: 'q0', x: 200, y: 200, isInitial: true, isAccepting: false },
-          { id: 'q1', label: 'q1', x: 400, y: 200, isInitial: false, isAccepting: true },
+          { id: 'q1', label: 'q1', x: 380, y: 200, isInitial: false, isAccepting: false },
+          { id: 'q2', label: 'q2', x: 560, y: 200, isInitial: false, isAccepting: true },
         ],
         [
-          { id: 'e0', sourceNodeId: 'q0', targetNodeId: 'q0', label: 'a, Z0 -> AZ0' },
-          { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q1', label: 'b, A -> ε' },
-          { id: 'e2', sourceNodeId: 'q1', targetNodeId: 'q1', label: 'b, A -> ε' },
+          { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q0', label: '0' },
+          { id: 'e2', sourceNodeId: 'q0', targetNodeId: 'q0', label: '1' },
+          { id: 'e3', sourceNodeId: 'q0', targetNodeId: 'q1', label: '0' },
+          { id: 'e4', sourceNodeId: 'q1', targetNodeId: 'q2', label: '1' },
         ],
-        'PDA',
-        'Z0'
+        'FA'
       );
-    } else if (id === 'tm-1') {
+    } else if (exampleId === 'pda-1') {
+      setMachineType('PDA');
       replaceMachine(
         [
           { id: 'q0', label: 'q0', x: 200, y: 200, isInitial: true, isAccepting: false },
-          { id: 'q1', label: 'q1', x: 400, y: 200, isInitial: false, isAccepting: true },
+          { id: 'q1', label: 'q1', x: 420, y: 200, isInitial: false, isAccepting: true },
         ],
         [
-          { id: 'e0', sourceNodeId: 'q0', targetNodeId: 'q0', label: '1 -> 1, R' },
-          { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q1', label: '□ -> 1, R' },
+          { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q0', label: 'a, Z0 -> aZ0' },
+          { id: 'e2', sourceNodeId: 'q0', targetNodeId: 'q0', label: 'a, a -> aa' },
+          { id: 'e3', sourceNodeId: 'q0', targetNodeId: 'q1', label: 'b, a -> ε' },
+          { id: 'e4', sourceNodeId: 'q1', targetNodeId: 'q1', label: 'b, a -> ε' },
         ],
-        'TM',
-        undefined,
-        '□'
+        'PDA'
       );
-    } else if (id.startsWith('cfg-')) {
-      const cfgTab = document.getElementById('tab-grammar');
-      if (cfgTab) cfgTab.click();
+    } else if (exampleId === 'tm-1') {
+      setMachineType('TM');
+      replaceMachine(
+        [
+          { id: 'q0', label: 'q0', x: 200, y: 200, isInitial: true, isAccepting: false },
+          { id: 'q1', label: 'q1', x: 420, y: 200, isInitial: false, isAccepting: true },
+        ],
+        [
+          { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q0', label: '1 -> 1, R' },
+          { id: 'e2', sourceNodeId: 'q0', targetNodeId: 'q1', label: '□ -> 1, S' },
+        ],
+        'TM'
+      );
     }
   };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden text-xs select-none">
-      {/* Search & Filter Header */}
-      <div className="p-2 border-b border-border-subtle bg-bg-surface1/50 flex items-center space-x-1.5 shrink-0">
-        <div className="relative flex-1">
-          <Search size={13} className="absolute left-2.5 top-2 text-txt-muted" />
-          <input
-            type="text"
-            placeholder="Search laboratory..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-bg-surface2 border border-border-subtle rounded-md pl-8 pr-2 py-1 text-xs text-txt-primary placeholder-txt-muted focus:outline-none focus:border-border-focus"
-          />
-        </div>
-      </div>
-
-      {/* Directory Category Pills */}
       <div className="flex items-center space-x-1 p-2 border-b border-border-subtle bg-bg-surface2/30 shrink-0 font-mono text-[10px]">
         <button
           onClick={() => setActiveTab('create')}
@@ -177,16 +197,6 @@ export const SidebarExplorer: React.FC = () => {
           Convert
         </button>
         <button
-          onClick={() => setActiveTab('analyze')}
-          className={`flex-1 py-1 px-1.5 rounded text-center transition-colors ${
-            activeTab === 'analyze'
-              ? 'bg-accent-primary text-white font-bold'
-              : 'text-txt-muted hover:text-txt-primary hover:bg-bg-surface3'
-          }`}
-        >
-          Analyze
-        </button>
-        <button
           onClick={() => setActiveTab('templates')}
           className={`flex-1 py-1 px-1.5 rounded text-center transition-colors ${
             activeTab === 'templates'
@@ -198,14 +208,12 @@ export const SidebarExplorer: React.FC = () => {
         </button>
       </div>
 
-      {/* Primary Scroll Area */}
       <div className="flex-1 overflow-y-auto p-2 space-y-3">
-        {/* BUILD TAB */}
         {activeTab === 'create' && (
-          <div className="space-y-3">
-            <div>
-              <span className="font-mono text-[10px] uppercase text-txt-muted tracking-wider block mb-1.5 px-1">
-                Construct Formal Model
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <span className="font-mono text-[10px] uppercase text-txt-muted tracking-wider block mb-1 px-1">
+                Construct State Machine
               </span>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
@@ -228,6 +236,7 @@ export const SidebarExplorer: React.FC = () => {
                   <span className="font-semibold text-txt-primary text-xs">PDA</span>
                   <span className="text-[10px] text-txt-muted">Pushdown Automaton</span>
                 </button>
+
                 <button
                   onClick={() => handleStartBlank('TM')}
                   className="p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex flex-col space-y-0.5 cursor-pointer"
@@ -237,38 +246,15 @@ export const SidebarExplorer: React.FC = () => {
                 </button>
               </div>
             </div>
-
-            <div>
-              <span className="font-mono text-[10px] uppercase text-txt-muted tracking-wider block mb-1.5 px-1">
-                Formal Grammar & Syntax
-              </span>
-              <div className="space-y-1.5">
-                <button
-                  onClick={() => {
-                    const cfgTab = document.getElementById('tab-grammar');
-                    if (cfgTab) cfgTab.click();
-                  }}
-                  className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex items-center justify-between"
-                >
-                  <div>
-                    <div className="font-semibold text-txt-primary">Context-Free Grammar (CFG)</div>
-                    <div className="text-[10px] text-txt-muted">Production rules S → aSb | ε</div>
-                  </div>
-                  <Sparkles size={14} className="text-accent-primary shrink-0" />
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* CONVERT TAB */}
         {activeTab === 'convert' && (
           <div className="space-y-2">
             <span className="font-mono text-[10px] uppercase text-txt-muted tracking-wider block mb-1 px-1">
               Active Context: {machineType}
             </span>
             <div className="space-y-1">
-              {/* RegEx to NFA */}
               <button
                 onClick={() => setIsRegexModalOpen(true)}
                 className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-accent-primary text-left transition-all flex items-center space-x-2 group cursor-pointer"
@@ -282,12 +268,11 @@ export const SidebarExplorer: React.FC = () => {
                 </div>
               </button>
 
-              {/* NFA to DFA */}
               <button
-                disabled={!isGraphNFA && machineType !== 'NFA'}
+                disabled={!isStructurallyValidFA || !isGraphNFA}
                 onClick={handleNfaToDfaConversion}
                 className={`w-full p-2 rounded-md border text-left transition-all flex items-center space-x-2 ${
-                  isGraphNFA || machineType === 'NFA'
+                  isStructurallyValidFA && isGraphNFA
                     ? 'bg-bg-surface2 hover:bg-bg-surface3 border-border-subtle hover:border-accent-cyan cursor-pointer group'
                     : 'bg-bg-surface2/40 border-border-subtle/50 opacity-50 cursor-not-allowed'
                 }`}
@@ -296,17 +281,22 @@ export const SidebarExplorer: React.FC = () => {
                 <div>
                   <div className="font-medium text-txt-primary text-xs">NFA → DFA Subset Construction</div>
                   <div className="text-[10px] text-txt-muted">
-                    {isGraphNFA || machineType === 'NFA' ? 'Powerset state transformation' : 'Requires NFA graph'}
+                    {!hasInitialState
+                      ? 'Requires initial state (q₀)'
+                      : !hasAcceptingState
+                      ? 'Requires final accepting state'
+                      : !isGraphNFA
+                      ? 'Already a deterministic DFA'
+                      : 'Powerset state transformation'}
                   </div>
                 </div>
               </button>
 
-              {/* Hopcroft DFA Minimization */}
               <button
-                disabled={isGraphNFA}
+                disabled={!isStructurallyValidFA || !isGraphDFA}
                 onClick={handleDfaMinimization}
                 className={`w-full p-2 rounded-md border text-left transition-all flex items-center space-x-2 ${
-                  !isGraphNFA
+                  isStructurallyValidFA && isGraphDFA
                     ? 'bg-bg-surface2 hover:bg-bg-surface3 border-border-subtle hover:border-semantic-accept cursor-pointer group'
                     : 'bg-bg-surface2/40 border-border-subtle/50 opacity-50 cursor-not-allowed'
                 }`}
@@ -315,7 +305,13 @@ export const SidebarExplorer: React.FC = () => {
                 <div>
                   <div className="font-medium text-txt-primary text-xs">Hopcroft DFA Minimization</div>
                   <div className="text-[10px] text-txt-muted">
-                    {!isGraphNFA ? 'State equivalence partition' : 'Requires DFA (Convert NFA first)'}
+                    {!hasInitialState
+                      ? 'Requires initial state (q₀)'
+                      : !hasAcceptingState
+                      ? 'Requires final accepting state'
+                      : isGraphNFA
+                      ? 'Requires DFA (Convert NFA first)'
+                      : 'State equivalence partition'}
                   </div>
                 </div>
               </button>
@@ -323,45 +319,6 @@ export const SidebarExplorer: React.FC = () => {
           </div>
         )}
 
-        {/* ANALYZE TAB */}
-        {activeTab === 'analyze' && (
-          <div className="space-y-2">
-            <span className="font-mono text-[10px] uppercase text-txt-muted tracking-wider block mb-1 px-1">
-              Verification & Proofs
-            </span>
-            <div className="space-y-1">
-              <button
-                onClick={() => {
-                  expandPanel('inspector');
-                  setActiveInspectorTab('diagnostics');
-                }}
-                className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle text-left transition-all flex items-center space-x-2"
-              >
-                <CheckCircle2 size={14} className="text-semantic-accept shrink-0" />
-                <div>
-                  <div className="font-medium text-txt-primary">DFA Completeness & Reachability</div>
-                  <div className="text-[10px] text-txt-muted">Inspect total delta function</div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  expandPanel('inspector');
-                  setActiveInspectorTab('analysis');
-                }}
-                className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle text-left transition-all flex items-center space-x-2"
-              >
-                <Layers size={14} className="text-accent-primary shrink-0" />
-                <div>
-                  <div className="font-medium text-txt-primary">Language Equivalence Check</div>
-                  <div className="text-[10px] text-txt-muted">Compute minimal counterexample</div>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* TEMPLATES TAB */}
         {activeTab === 'templates' && (
           <div className="space-y-1.5">
             <span className="font-mono text-[10px] uppercase text-txt-muted tracking-wider block mb-1 px-1">
@@ -370,7 +327,7 @@ export const SidebarExplorer: React.FC = () => {
 
             <button
               onClick={() => handleLoadExample('dfa-1')}
-              className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle text-left transition-all flex items-center justify-between"
+              className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle text-left transition-all flex items-center justify-between cursor-pointer"
             >
               <div>
                 <div className="font-medium text-txt-primary">DFA: Even Count of Zeros</div>
@@ -383,7 +340,7 @@ export const SidebarExplorer: React.FC = () => {
 
             <button
               onClick={() => handleLoadExample('nfa-1')}
-              className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle text-left transition-all flex items-center justify-between"
+              className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle text-left transition-all flex items-center justify-between cursor-pointer"
             >
               <div>
                 <div className="font-medium text-txt-primary">NFA: Ends with "01"</div>
@@ -396,7 +353,7 @@ export const SidebarExplorer: React.FC = () => {
 
             <button
               onClick={() => handleLoadExample('pda-1')}
-              className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle text-left transition-all flex items-center justify-between"
+              className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle text-left transition-all flex items-center justify-between cursor-pointer"
             >
               <div>
                 <div className="font-medium text-txt-primary">PDA: L = &#123; aⁿbⁿ &#125;</div>
@@ -409,7 +366,7 @@ export const SidebarExplorer: React.FC = () => {
 
             <button
               onClick={() => handleLoadExample('tm-1')}
-              className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle text-left transition-all flex items-center justify-between"
+              className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex items-center justify-between cursor-pointer"
             >
               <div>
                 <div className="font-medium text-txt-primary">TM: Unary Increment</div>
@@ -423,7 +380,6 @@ export const SidebarExplorer: React.FC = () => {
         )}
       </div>
 
-      {/* Selected Workspace Status Footer */}
       <div className="p-2.5 border-t border-border-subtle bg-bg-surface2/60 space-y-1">
         <div className="flex items-center justify-between font-medium text-txt-primary">
           <span>Active Workspace</span>
@@ -447,4 +403,3 @@ export const SidebarExplorer: React.FC = () => {
     </div>
   );
 };
-

@@ -28,8 +28,7 @@ export function getCanonicalSubsetLabel(states: ReadonlyArray<StateNode>): strin
  */
 export function convertNfaToDfa(graph: SolverGraphInput): NFAConversionResult {
   const validationResult = validateNFA(graph);
-  const fatalErrors = validationResult.errors.filter((e) => e.code !== 'MISSING_ACCEPTING_STATE');
-  if (fatalErrors.length > 0) {
+  if (!validationResult.isValid) {
     return {
       success: false,
       nodes: [],
@@ -37,7 +36,7 @@ export function convertNfaToDfa(graph: SolverGraphInput): NFAConversionResult {
       subsets: [],
       alphabet: [],
       validationResult,
-      errorMessage: `NFA validation failed with ${fatalErrors.length} fatal error(s). Cannot convert invalid NFA.`,
+      errorMessage: `NFA validation failed with ${validationResult.errors.length} error(s). ${validationResult.errors[0]?.message || 'Cannot convert invalid NFA.'}`,
     };
   }
 

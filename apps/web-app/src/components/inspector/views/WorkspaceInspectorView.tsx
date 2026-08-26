@@ -37,7 +37,12 @@ export const WorkspaceInspectorView: React.FC = () => {
   const alphabet = getAlphabet();
   const tuple5 = to5Tuple();
 
+  const hasInitialState = useMemo(() => nodes.some((n) => n.isInitial), [nodes]);
+  const hasAcceptingState = useMemo(() => nodes.some((n) => n.isAccepting), [nodes]);
+  const isStructurallyValidFA = hasInitialState && hasAcceptingState;
+
   const isGraphNFA = useMemo(() => {
+    if (!isStructurallyValidFA) return false;
     if (edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '')) return true;
     for (const node of nodes) {
       const seen = new Set<string>();
@@ -48,7 +53,12 @@ export const WorkspaceInspectorView: React.FC = () => {
       }
     }
     return false;
-  }, [nodes, edges]);
+  }, [nodes, edges, isStructurallyValidFA]);
+
+  const isGraphDFA = useMemo(() => {
+    if (!isStructurallyValidFA) return false;
+    return !isGraphNFA;
+  }, [isStructurallyValidFA, isGraphNFA]);
 
   const handleNfaToDfaConversion = () => {
     const res = convertNfaToDfa({ nodes, edges });
@@ -274,10 +284,10 @@ export const WorkspaceInspectorView: React.FC = () => {
 
           {/* NFA to DFA Button */}
           <button
-            disabled={!isGraphNFA && machineType !== 'NFA'}
+            disabled={!isStructurallyValidFA || !isGraphNFA}
             onClick={handleNfaToDfaConversion}
             className={`w-full p-2 rounded-lg border text-left transition-all flex items-center justify-between group ${
-              isGraphNFA || machineType === 'NFA'
+              isStructurallyValidFA && isGraphNFA
                 ? 'border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-accent-cyan cursor-pointer'
                 : 'border-border-subtle/50 bg-bg-surface1/40 opacity-50 cursor-not-allowed'
             }`}
@@ -291,21 +301,27 @@ export const WorkspaceInspectorView: React.FC = () => {
                   NFA → DFA Subset Construction
                 </div>
                 <div className="text-[10px] text-txt-muted">
-                  {isGraphNFA || machineType === 'NFA' ? 'Determinize NFA via power-set construction' : 'Requires NFA graph'}
+                  {!hasInitialState
+                    ? 'Requires initial state (q₀)'
+                    : !hasAcceptingState
+                    ? 'Requires final accepting state'
+                    : !isGraphNFA
+                    ? 'Already a deterministic DFA'
+                    : 'Determinize NFA via power-set construction'}
                 </div>
               </div>
             </div>
             <span className="text-[10px] font-bold text-accent-cyan bg-accent-cyan/10 px-1.5 py-0.5 rounded border border-accent-cyan/20 shrink-0 ml-1">
-              {isGraphNFA || machineType === 'NFA' ? 'Convert' : 'NFA only'}
+              {isStructurallyValidFA && isGraphNFA ? 'Convert' : 'NFA only'}
             </span>
           </button>
 
           {/* DFA Minimization Button */}
           <button
-            disabled={isGraphNFA}
+            disabled={!isStructurallyValidFA || !isGraphDFA}
             onClick={handleDfaMinimization}
             className={`w-full p-2 rounded-lg border text-left transition-all flex items-center justify-between group ${
-              !isGraphNFA
+              isStructurallyValidFA && isGraphDFA
                 ? 'border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-semantic-accept cursor-pointer'
                 : 'border-border-subtle/50 bg-bg-surface1/40 opacity-50 cursor-not-allowed'
             }`}
@@ -319,12 +335,18 @@ export const WorkspaceInspectorView: React.FC = () => {
                   Hopcroft DFA Minimization
                 </div>
                 <div className="text-[10px] text-txt-muted">
-                  {!isGraphNFA ? 'Minimize states via partition refinement' : 'Requires DFA (Convert NFA first)'}
+                  {!hasInitialState
+                    ? 'Requires initial state (q₀)'
+                    : !hasAcceptingState
+                    ? 'Requires final accepting state'
+                    : isGraphNFA
+                    ? 'Requires DFA (Convert NFA first)'
+                    : 'Minimize states via partition refinement'}
                 </div>
               </div>
             </div>
             <span className="text-[10px] font-bold text-semantic-accept bg-semantic-accept/10 px-1.5 py-0.5 rounded border border-semantic-accept/20 shrink-0 ml-1">
-              {!isGraphNFA ? 'Minimize' : 'DFA only'}
+              {isStructurallyValidFA && isGraphDFA ? 'Minimize' : 'DFA only'}
             </span>
           </button>
         </div>
