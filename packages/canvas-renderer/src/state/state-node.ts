@@ -13,6 +13,7 @@ export interface StateNode {
   readonly isAccepting?: boolean;
   readonly isSelected?: boolean;
   readonly isExecutionHighlighted?: boolean;
+  readonly isExecutionAccepting?: boolean;
   readonly isHovered?: boolean;
   readonly isDisabled?: boolean;
   readonly fillColor?: string;

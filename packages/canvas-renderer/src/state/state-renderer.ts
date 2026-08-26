@@ -209,8 +209,12 @@ export class StateRenderer {
     const dpr = viewport.getDevicePixelRatio();
 
     const fillColor = node.fillColor ?? this.theme.stateFill;
-    const strokeColor = node.strokeColor ?? this.theme.stateStroke;
-    const strokeWidth = Math.max(1, 2 * dpr);
+    const strokeColor = node.isExecutionAccepting
+      ? '#10B981'
+      : node.isExecutionHighlighted
+      ? '#F97316'
+      : node.strokeColor ?? this.theme.stateStroke;
+    const strokeWidth = Math.max(1, (node.isExecutionHighlighted || node.isExecutionAccepting ? 3 : 2) * dpr);
 
     // 1. Initial State Indicator Arrow Marker (if isInitial)
     if (node.isInitial) {
@@ -224,7 +228,11 @@ export class StateRenderer {
       ctx.lineTo(triangle[1].x, triangle[1].y);
       ctx.lineTo(triangle[2].x, triangle[2].y);
       ctx.closePath();
-      ctx.fillStyle = this.theme.accentPrimary;
+      ctx.fillStyle = node.isExecutionAccepting
+        ? '#10B981'
+        : node.isExecutionHighlighted
+        ? '#F97316'
+        : this.theme.accentPrimary;
       ctx.fill();
     }
 
@@ -260,7 +268,11 @@ export class StateRenderer {
     const screenCenter = camera.worldToScreen({ x: node.x, y: node.y });
     const zoom = camera.getState().zoom;
     const layout = computeAdaptiveStateLayout(node.label, !!node.isAccepting, node.radius);
-    const textColor = node.textColor ?? this.theme.textPrimary;
+    const textColor = node.isExecutionAccepting
+      ? '#34D399'
+      : node.isExecutionHighlighted
+      ? '#FDBA74'
+      : node.textColor ?? this.theme.textPrimary;
 
     const fontSize = Math.max(9, Math.round(layout.baseFontSize * Math.sqrt(zoom)));
     const lineHeight = fontSize * 1.25;
@@ -292,10 +304,12 @@ export class StateRenderer {
     const zoom = camera.getState().zoom;
     const dpr = viewport.getDevicePixelRatio();
     const selectionRadius = (getNodeRadius(node) + 2) * zoom;
-    const strokeWidth = DEFAULT_SELECTION_STROKE_WIDTH * dpr;
+    const strokeWidth = (node.isExecutionHighlighted || node.isExecutionAccepting ? 4 : DEFAULT_SELECTION_STROKE_WIDTH) * dpr;
 
-    const strokeColor = node.isExecutionHighlighted
-      ? this.theme.accentPrimary
+    const strokeColor = node.isExecutionAccepting
+      ? '#10B981'
+      : node.isExecutionHighlighted
+      ? '#F97316'
       : this.theme.borderFocus;
 
     ctx.beginPath();

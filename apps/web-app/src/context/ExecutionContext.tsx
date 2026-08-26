@@ -179,11 +179,11 @@ export const ExecutionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setIsPlaying(true);
   }, [canRun, isPlaying, currentStepIndex, steps.length]);
 
-  // Automated step playback timer loop
+  // Automated step playback timer loop: automatically steps through execution steps sequentially
   useEffect(() => {
     if (!isPlaying) return;
 
-    if (!canStep) {
+    if (currentStepIndex >= steps.length - 1) {
       setIsPlaying(false);
       return;
     }
@@ -199,7 +199,7 @@ export const ExecutionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }, playSpeedMs);
 
     return () => clearTimeout(timer);
-  }, [isPlaying, canStep, steps.length, playSpeedMs]);
+  }, [isPlaying, currentStepIndex, steps.length, playSpeedMs]);
 
   // Centralized keyboard shortcuts for simulation execution
   useEffect(() => {

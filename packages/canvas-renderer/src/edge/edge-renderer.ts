@@ -229,7 +229,7 @@ export class EdgeRenderer {
 
     const strokeWidth = Math.max(1, baseWidth * dpr);
     const strokeColor = edge.isExecutionHighlighted
-      ? this.theme.accentPrimary
+      ? '#F97316'
       : edge.isSelected || edge.isHovered
       ? this.theme.borderFocus
       : edge.color ?? this.theme.edgeStroke;

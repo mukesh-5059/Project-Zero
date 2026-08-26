@@ -46,11 +46,16 @@ export const CanvasEngineHost: React.FC = () => {
   // Highlight active execution state(s) on CanvasEngine transiently (decoupled from isSelected)
   useEffect(() => {
     const activeSet = new Set(activeStateIds);
-    const highlightedNodes = nodes.map((n) => ({
-      ...n,
-      isSelected: selectedNodeIds.includes(n.id),
-      isExecutionHighlighted: activeStateIds.length > 0 ? activeSet.has(n.id) : false,
-    }));
+    const highlightedNodes = nodes.map((n) => {
+      const isActive = activeStateIds.length > 0 ? activeSet.has(n.id) : false;
+      const isAccepting = isActive && Boolean(n.isAccepting);
+      return {
+        ...n,
+        isSelected: selectedNodeIds.includes(n.id),
+        isExecutionHighlighted: isActive && !isAccepting,
+        isExecutionAccepting: isAccepting,
+      };
+    });
     engineRef.current?.setStateNodes(highlightedNodes);
   }, [nodes, activeStateIds, selectedNodeIds]);
 
