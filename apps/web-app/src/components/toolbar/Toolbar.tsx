@@ -287,25 +287,25 @@ export const DesktopToolbar: React.FC = () => {
     <div
       role="toolbar"
       aria-label="Canvas Workspace Toolbar"
-      className="h-10 bg-bg-surface1/90 backdrop-blur-md border-b border-border-subtle flex items-center justify-between px-3 select-none z-20 space-x-2 w-full max-w-full overflow-hidden shrink-0"
+      className="h-10 bg-bg-surface1/90 backdrop-blur-md border-b border-border-subtle flex items-center justify-between px-3 select-none z-20 w-full max-w-full overflow-x-auto shrink-0"
     >
       {/* Primary Tools Pods (Selection, Creation, Execution) */}
-      <div className="flex items-center space-x-1.5 shrink-0">
-        <ToolbarGroup label="Selection Tools">
+      <div className="flex items-center justify-between w-full space-x-2.5">
+        <ToolbarGroup label="Selection Tools" className="flex-1 justify-evenly">
           {selectionTools.map((item) => (
-            <ToolbarButton key={item.id} item={item} />
+            <ToolbarButton key={item.id} item={item} className="flex-1" />
           ))}
         </ToolbarGroup>
 
-        <ToolbarGroup label="Creation Tools">
+        <ToolbarGroup label="Creation Tools" className="flex-[3.5] justify-evenly">
           {creationTools.map((item) => (
-            <ToolbarButton key={item.id} item={item} />
+            <ToolbarButton key={item.id} item={item} className="flex-1" />
           ))}
         </ToolbarGroup>
 
-        <ToolbarGroup label="Simulation Controls">
+        <ToolbarGroup label="Simulation Controls" className="flex-2 justify-evenly">
           {simulationControls.map((item) => (
-            <ToolbarButton key={item.id} item={item} />
+            <ToolbarButton key={item.id} item={item} className="flex-1" />
           ))}
         </ToolbarGroup>
       </div>

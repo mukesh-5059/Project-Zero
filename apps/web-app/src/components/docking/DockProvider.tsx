@@ -120,7 +120,7 @@ export const DockProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLayout((prev) => ({ ...prev, activeBottomTab }));
   }, []);
 
-  const setActiveInspectorTab = useCallback((activeInspectorTab: 'state' | 'transition' | 'workspace' | 'analysis' | 'diagnostics' | 'explanation') => {
+  const setActiveInspectorTab = useCallback((activeInspectorTab: 'inspect' | 'state' | 'transition' | 'workspace' | 'analysis' | 'diagnostics' | 'explanation') => {
     setLayout((prev) => ({ ...prev, activeInspectorTab, inspectorCollapsed: false, inspectorHidden: false }));
   }, []);
 

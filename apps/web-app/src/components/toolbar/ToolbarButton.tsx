@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { IToolbarItem } from './types';
 
-export const ToolbarButton: React.FC<{ item: IToolbarItem }> = ({ item }) => {
+export const ToolbarButton: React.FC<{ item: IToolbarItem; className?: string }> = ({ item, className = '' }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const Icon = item.icon;
 
   return (
-    <div className="relative flex items-center">
+    <div className={`relative flex items-center ${className}`}>
       <button
         type="button"
         role="button"
@@ -19,7 +19,7 @@ export const ToolbarButton: React.FC<{ item: IToolbarItem }> = ({ item }) => {
         onMouseLeave={() => setShowTooltip(false)}
         onFocus={() => setShowTooltip(true)}
         onBlur={() => setShowTooltip(false)}
-        className={`relative flex items-center space-x-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all outline-none select-none ${
+        className={`w-full relative flex items-center justify-center space-x-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all outline-none select-none ${
           item.isDisabled
             ? 'opacity-40 cursor-not-allowed text-txt-muted bg-transparent'
             : item.isActive

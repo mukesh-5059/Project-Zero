@@ -36,7 +36,7 @@ export interface IDockState {
   bottomPanelHidden: boolean;
   activeSidebarTab: 'explorer' | 'syllabus' | 'quizzes';
   activeBottomTab: BottomTabId;
-  activeInspectorTab: 'state' | 'transition' | 'workspace' | 'analysis' | 'diagnostics' | 'explanation';
+  activeInspectorTab: 'inspect' | 'state' | 'transition' | 'workspace' | 'analysis' | 'diagnostics' | 'explanation';
 }
 
 export interface IDockControls {
@@ -55,6 +55,6 @@ export interface IDockControls {
   resetBottomPanelHeight: () => void;
   setActiveSidebarTab: (tab: 'explorer' | 'syllabus' | 'quizzes') => void;
   setActiveBottomTab: (tab: BottomTabId) => void;
-  setActiveInspectorTab: (tab: 'state' | 'transition' | 'workspace' | 'analysis' | 'diagnostics' | 'explanation') => void;
+  setActiveInspectorTab: (tab: 'inspect' | 'state' | 'transition' | 'workspace' | 'analysis' | 'diagnostics' | 'explanation') => void;
   resetLayout: () => void;
 }

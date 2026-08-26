@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import { useGraph } from '../../../context/GraphContext';
 import { useExecution } from '../../../context/ExecutionContext';
-import { useWorkspace } from '../../../context/WorkspaceContext';
-import { analyzeMachine, explainExecutionRun, convertNfaToDfa, minimizeDFA } from '@project-zero/core-solver';
+import { analyzeMachine, explainExecutionRun } from '@project-zero/core-solver';
 import { fetchAIExplanation } from '../../../services/aiExplanationService';
-import { RegexModal } from '../../modals/RegexModal';
-import { Sparkles, CheckCircle2, AlertTriangle, HelpCircle, Layers, Cpu, Wand2, Code, RefreshCw, Zap } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertTriangle, HelpCircle, Layers, Cpu } from 'lucide-react';
 
 export const MachineAnalysisView: React.FC = () => {
-  const [isRegexModalOpen, setIsRegexModalOpen] = useState(false);
-  const { setActiveInspectorTab } = useWorkspace();
-  const { nodes, edges, machineType, replaceMachine, setLastMinimizationResult, setLastRegexResult } = useGraph();
+  const { nodes, edges, machineType } = useGraph();
   const { inputString, validationResult } = useExecution();
 
   const [aiInsight, setAiInsight] = useState<string | null>(null);
@@ -21,45 +17,6 @@ export const MachineAnalysisView: React.FC = () => {
   const executionExplanation = inputString
     ? explainExecutionRun({ nodes, edges }, inputString, machineType)
     : null;
-
-  const hasInitialState = React.useMemo(() => nodes.some((n) => n.isInitial), [nodes]);
-  const hasAcceptingState = React.useMemo(() => nodes.some((n) => n.isAccepting), [nodes]);
-  const isStructurallyValidFA = hasInitialState && hasAcceptingState;
-
-  const isGraphNFA = React.useMemo(() => {
-    if (!isStructurallyValidFA) return false;
-    if (edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '')) return true;
-    for (const node of nodes) {
-      const seen = new Set<string>();
-      for (const e of edges.filter((edge) => edge.sourceNodeId === node.id)) {
-        const sym = e.label.trim();
-        if (seen.has(sym)) return true;
-        seen.add(sym);
-      }
-    }
-    return false;
-  }, [nodes, edges, isStructurallyValidFA]);
-
-  const isGraphDFA = React.useMemo(() => {
-    if (!isStructurallyValidFA) return false;
-    return !isGraphNFA;
-  }, [isStructurallyValidFA, isGraphNFA]);
-
-  const handleNfaToDfaConversion = () => {
-    const res = convertNfaToDfa({ nodes, edges });
-    if (res.success && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'FA');
-    }
-  };
-
-  const handleDfaMinimization = () => {
-    const res = minimizeDFA({ nodes, edges });
-    setLastMinimizationResult(res);
-    if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'FA');
-    }
-    setActiveInspectorTab('explanation');
-  };
 
   const handleFetchAIExplanation = async () => {
     setIsAiLoading(true);
@@ -115,99 +72,6 @@ export const MachineAnalysisView: React.FC = () => {
           <div className="font-bold text-semantic-info text-xs mt-0.5 truncate">
             {analysis.alphabet.length > 0 ? `{${analysis.alphabet.join(',')}}` : '∅'}
           </div>
-        </div>
-      </div>
-
-      {/* Automata Transformations & Conversions Section */}
-      <div className="p-2.5 rounded-lg border border-border-subtle bg-bg-surface2/60 space-y-2">
-        <div className="font-bold text-txt-primary text-[11px] flex items-center space-x-1.5">
-          <Wand2 size={13} className="text-accent-primary" />
-          <span>Automata Transformations & Conversions</span>
-        </div>
-
-        <div className="space-y-1.5">
-          {/* RegEx to NFA Button */}
-          <button
-            onClick={() => setIsRegexModalOpen(true)}
-            className="w-full p-2 rounded-md border border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-accent-primary text-left transition-all flex items-center justify-between group cursor-pointer"
-          >
-            <div className="flex items-center space-x-2">
-              <Code size={14} className="text-accent-primary shrink-0 group-hover:scale-110 transition-transform" />
-              <div>
-                <div className="font-bold text-txt-primary text-xs group-hover:text-accent-primary transition-colors">
-                  RegEx → Thompson ε-NFA
-                </div>
-                <div className="text-[10px] text-txt-muted">Convert regular expression into state machine</div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-accent-primary bg-accent-primary/10 px-1.5 py-0.5 rounded border border-accent-primary/20 shrink-0 ml-1">
-              Run
-            </span>
-          </button>
-
-          {/* NFA to DFA Button */}
-          <button
-            disabled={!isStructurallyValidFA || !isGraphNFA}
-            onClick={handleNfaToDfaConversion}
-            className={`w-full p-2 rounded-md border text-left transition-all flex items-center justify-between group ${
-              isStructurallyValidFA && isGraphNFA
-                ? 'border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-accent-cyan cursor-pointer'
-                : 'border-border-subtle/50 bg-bg-surface1/40 opacity-50 cursor-not-allowed'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <RefreshCw size={14} className="text-accent-cyan shrink-0" />
-              <div>
-                <div className="font-bold text-txt-primary text-xs group-hover:text-accent-cyan transition-colors">
-                  NFA → DFA Subset Construction
-                </div>
-                <div className="text-[10px] text-txt-muted">
-                  {!hasInitialState
-                    ? 'Requires initial state (q₀)'
-                    : !hasAcceptingState
-                    ? 'Requires final accepting state'
-                    : !isGraphNFA
-                    ? 'Already a deterministic DFA'
-                    : 'Powerset state transformation'}
-                </div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-accent-cyan bg-accent-cyan/10 px-1.5 py-0.5 rounded border border-accent-cyan/20 shrink-0 ml-1">
-              {isStructurallyValidFA && isGraphNFA ? 'Convert' : 'NFA only'}
-            </span>
-          </button>
-
-          {/* DFA Minimization Button */}
-          <button
-            disabled={!isStructurallyValidFA || !isGraphDFA}
-            onClick={handleDfaMinimization}
-            className={`w-full p-2 rounded-md border text-left transition-all flex items-center justify-between group ${
-              isStructurallyValidFA && isGraphDFA
-                ? 'border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-semantic-accept cursor-pointer'
-                : 'border-border-subtle/50 bg-bg-surface1/40 opacity-50 cursor-not-allowed'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Zap size={14} className="text-semantic-accept shrink-0" />
-              <div>
-                <div className="font-bold text-txt-primary text-xs group-hover:text-semantic-accept transition-colors">
-                  Hopcroft DFA Minimization
-                </div>
-                <div className="text-[10px] text-txt-muted">
-                  {!hasInitialState
-                    ? 'Requires initial state (q₀)'
-                    : !hasAcceptingState
-                    ? 'Requires final accepting state'
-                    : isGraphNFA
-                    ? 'Requires DFA (Convert NFA first)'
-                    : 'State equivalence partition'}
-                </div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-semantic-accept bg-semantic-accept/10 px-1.5 py-0.5 rounded border border-semantic-accept/20 shrink-0 ml-1">
-              {isStructurallyValidFA && isGraphDFA ? 'Minimize' : 'DFA only'}
-            </span>
-          </button>
         </div>
       </div>
 
@@ -312,16 +176,6 @@ export const MachineAnalysisView: React.FC = () => {
           </div>
         )}
       </div>
-
-      <RegexModal
-        isOpen={isRegexModalOpen}
-        onClose={() => setIsRegexModalOpen(false)}
-        onGenerate={(newNodes, newEdges, regexResult, inputRegex) => {
-          replaceMachine(newNodes, newEdges, 'NFA');
-          setLastRegexResult({ inputRegex, result: regexResult });
-          setActiveInspectorTab('explanation');
-        }}
-      />
     </div>
   );
 };

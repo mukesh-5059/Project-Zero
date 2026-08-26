@@ -87,20 +87,22 @@ export const WorkspaceInspectorView: React.FC = () => {
     return Array.from(set).sort();
   }, [alphabet, edges, blankSymbol]);
 
+  const effectiveTypeLabel = useMemo(() => {
+    if (machineType === 'PDA') return 'Pushdown Automaton (PDA)';
+    if (machineType === 'TM') return 'Turing Machine (TM)';
+    if (machineType === 'DFA') return 'Deterministic Finite Automaton (DFA)';
+    if (machineType === 'NFA') return 'Nondeterministic Finite Automaton (NFA)';
+    return isGraphNFA ? 'Nondeterministic Finite Automaton (NFA)' : 'Deterministic Finite Automaton (DFA)';
+  }, [machineType, isGraphNFA]);
+
   const schema: IInspectorSchema = useMemo(() => {
     const metaFields = [
       { id: 'machine-name', label: 'Machine Name', type: 'text' as const, value: 'Automaton_Workspace.pz' },
       {
         id: 'machine-type',
         label: 'Formal Model Type',
-        type: 'select' as const,
-        value: machineType.toLowerCase(),
-        options: [
-          { label: 'Deterministic Finite Automaton (DFA)', value: 'dfa' },
-          { label: 'Nondeterministic Finite Automaton (NFA)', value: 'nfa' },
-          { label: 'Pushdown Automaton (PDA)', value: 'pda' },
-          { label: 'Turing Machine (TM)', value: 'tm' },
-        ],
+        type: 'badge' as const,
+        value: effectiveTypeLabel,
       },
       {
         id: 'validation-status',
@@ -236,13 +238,10 @@ export const WorkspaceInspectorView: React.FC = () => {
       subtitle: `${machineType} Automaton`,
       sections,
     };
-  }, [machineType, initialStackSymbol, blankSymbol, nodes, edges, initialStateNode, acceptingNodes, alphabet, tapeAlphabet, tuple5, validationResult, currentStep, executionResult]);
+  }, [machineType, effectiveTypeLabel, initialStackSymbol, blankSymbol, nodes, edges, initialStateNode, acceptingNodes, alphabet, tapeAlphabet, tuple5, validationResult, currentStep, executionResult]);
 
   const handleFieldChange = (id: string, value: string | number | boolean) => {
-    if (id === 'machine-type') {
-      const val = String(value).toUpperCase() as AutomatonType;
-      setMachineType(val);
-    } else if (id === 'initial-stack-symbol') {
+    if (id === 'initial-stack-symbol') {
       setInitialStackSymbol(String(value).trim() || 'Z0');
     } else if (id === 'blank-symbol') {
       setBlankSymbol(String(value).trim() || '□');
@@ -252,115 +251,6 @@ export const WorkspaceInspectorView: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col overflow-y-auto select-none">
       <InspectorSchemaRenderer schema={schema} onFieldChange={handleFieldChange} />
-
-      {/* Automata Transformations & Conversions Action Section */}
-      <div className="p-3 border-t border-border-subtle bg-bg-surface2/40 space-y-2 shrink-0 font-mono text-xs">
-        <div className="font-bold text-txt-primary text-[11px] flex items-center space-x-1.5">
-          <Wand2 size={13} className="text-accent-primary" />
-          <span>Automata Transformations</span>
-        </div>
-
-        <div className="space-y-1.5">
-          {/* RegEx to NFA Button */}
-          <button
-            onClick={() => setIsRegexModalOpen(true)}
-            className="w-full p-2 rounded-lg border border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-accent-primary text-left transition-all flex items-center justify-between group"
-          >
-            <div className="flex items-center space-x-2">
-              <div className="p-1 rounded bg-accent-primary/15 text-accent-primary">
-                <Code size={14} />
-              </div>
-              <div>
-                <div className="font-bold text-txt-primary text-xs group-hover:text-accent-primary transition-colors">
-                  RegEx → Thompson ε-NFA
-                </div>
-                <div className="text-[10px] text-txt-muted">Convert regular expressions to state machine</div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-accent-primary bg-accent-primary/10 px-1.5 py-0.5 rounded border border-accent-primary/20 shrink-0 ml-1">
-              Run
-            </span>
-          </button>
-
-          {/* NFA to DFA Button */}
-          <button
-            disabled={!isStructurallyValidFA || !isGraphNFA}
-            onClick={handleNfaToDfaConversion}
-            className={`w-full p-2 rounded-lg border text-left transition-all flex items-center justify-between group ${
-              isStructurallyValidFA && isGraphNFA
-                ? 'border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-accent-cyan cursor-pointer'
-                : 'border-border-subtle/50 bg-bg-surface1/40 opacity-50 cursor-not-allowed'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <div className="p-1 rounded bg-accent-cyan/15 text-accent-cyan">
-                <RefreshCw size={14} />
-              </div>
-              <div>
-                <div className="font-bold text-txt-primary text-xs group-hover:text-accent-cyan transition-colors">
-                  NFA → DFA Subset Construction
-                </div>
-                <div className="text-[10px] text-txt-muted">
-                  {!hasInitialState
-                    ? 'Requires initial state (q₀)'
-                    : !hasAcceptingState
-                    ? 'Requires final accepting state'
-                    : !isGraphNFA
-                    ? 'Already a deterministic DFA'
-                    : 'Determinize NFA via power-set construction'}
-                </div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-accent-cyan bg-accent-cyan/10 px-1.5 py-0.5 rounded border border-accent-cyan/20 shrink-0 ml-1">
-              {isStructurallyValidFA && isGraphNFA ? 'Convert' : 'NFA only'}
-            </span>
-          </button>
-
-          {/* DFA Minimization Button */}
-          <button
-            disabled={!isStructurallyValidFA || !isGraphDFA}
-            onClick={handleDfaMinimization}
-            className={`w-full p-2 rounded-lg border text-left transition-all flex items-center justify-between group ${
-              isStructurallyValidFA && isGraphDFA
-                ? 'border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-semantic-accept cursor-pointer'
-                : 'border-border-subtle/50 bg-bg-surface1/40 opacity-50 cursor-not-allowed'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <div className="p-1 rounded bg-semantic-accept/15 text-semantic-accept">
-                <Zap size={14} />
-              </div>
-              <div>
-                <div className="font-bold text-txt-primary text-xs group-hover:text-semantic-accept transition-colors">
-                  Hopcroft DFA Minimization
-                </div>
-                <div className="text-[10px] text-txt-muted">
-                  {!hasInitialState
-                    ? 'Requires initial state (q₀)'
-                    : !hasAcceptingState
-                    ? 'Requires final accepting state'
-                    : isGraphNFA
-                    ? 'Requires DFA (Convert NFA first)'
-                    : 'Minimize states via partition refinement'}
-                </div>
-              </div>
-            </div>
-            <span className="text-[10px] font-bold text-semantic-accept bg-semantic-accept/10 px-1.5 py-0.5 rounded border border-semantic-accept/20 shrink-0 ml-1">
-              {isStructurallyValidFA && isGraphDFA ? 'Minimize' : 'DFA only'}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      <RegexModal
-        isOpen={isRegexModalOpen}
-        onClose={() => setIsRegexModalOpen(false)}
-        onGenerate={(newNodes, newEdges, regexResult, inputRegex) => {
-          replaceMachine(newNodes, newEdges, 'NFA');
-          setLastRegexResult({ inputRegex, result: regexResult });
-          setActiveInspectorTab('explanation');
-        }}
-      />
     </div>
   );
 };
