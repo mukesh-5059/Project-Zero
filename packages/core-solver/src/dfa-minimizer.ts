@@ -9,7 +9,8 @@ import { StateNode, TransitionEdge } from '@project-zero/canvas-renderer';
  */
 export function minimizeDFA(graph: SolverGraphInput): DFAMinimizationResult {
   const validationResult = validateDFA(graph);
-  if (!validationResult.isValid) {
+  const fatalErrors = validationResult.errors.filter((e) => e.code !== 'MISSING_ACCEPTING_STATE');
+  if (fatalErrors.length > 0) {
     return {
       success: false,
       nodes: [],
@@ -22,7 +23,7 @@ export function minimizeDFA(graph: SolverGraphInput): DFAMinimizationResult {
       mergedStateCount: 0,
       isAlreadyMinimal: false,
       validationResult,
-      errorMessage: `DFA validation failed with ${validationResult.errors.length} error(s). Cannot minimize invalid DFA.`,
+      errorMessage: `DFA validation failed with ${fatalErrors.length} fatal error(s). Cannot minimize invalid DFA.`,
     };
   }
 

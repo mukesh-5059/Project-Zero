@@ -26,7 +26,8 @@ import { tokenizeInputStringStrict } from './tokenization';
  */
 export function executeDFA(graph: SolverGraphInput, inputString: string): DFAExecutionResult {
   const validation = validateDFA(graph);
-  if (!validation.isValid) {
+  const fatalErrors = validation.errors.filter((e) => e.code !== 'MISSING_ACCEPTING_STATE');
+  if (fatalErrors.length > 0) {
     return {
       isAccepted: false,
       finalStateId: null,
@@ -89,11 +90,12 @@ export function executeDFA(graph: SolverGraphInput, inputString: string): DFAExe
       isAccepting,
     });
 
+    const hasAcceptingStates = graph.nodes.some((n) => n.isAccepting);
     return {
       isAccepted: isAccepting,
       finalStateId: currentState.id,
       finalStateLabel: currentState.label || currentState.id,
-      rejectionReason: isAccepting ? undefined : 'NON_ACCEPTING_FINAL_STATE',
+      rejectionReason: isAccepting ? undefined : hasAcceptingStates ? 'NON_ACCEPTING_FINAL_STATE' : 'NO_ACCEPTING_STATE',
       steps,
       inputString,
       validationResult: validation,
@@ -178,12 +180,13 @@ export function executeDFA(graph: SolverGraphInput, inputString: string): DFAExe
   }
 
   const isAccepted = Boolean(currentState.isAccepting);
+  const hasAcceptingStates = graph.nodes.some((n) => n.isAccepting);
 
   return {
     isAccepted,
     finalStateId: currentState.id,
     finalStateLabel: currentState.label || currentState.id,
-    rejectionReason: isAccepted ? undefined : 'NON_ACCEPTING_FINAL_STATE',
+    rejectionReason: isAccepted ? undefined : hasAcceptingStates ? 'NON_ACCEPTING_FINAL_STATE' : 'NO_ACCEPTING_STATE',
     steps,
     inputString,
     validationResult: validation,

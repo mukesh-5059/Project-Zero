@@ -53,7 +53,21 @@ export const ExecutionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playSpeedMs, setPlaySpeedMs] = useState<number>(600);
 
-  // Dynamically validate depending on active machineType ('DFA', 'NFA', 'PDA', or 'TM')
+  // Helper to dynamically detect whether an FA graph has NFA characteristics
+  const isGraphNFA = useMemo(() => {
+    if (edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '')) return true;
+    for (const node of nodes) {
+      const seen = new Set<string>();
+      for (const e of edges.filter((edge) => edge.sourceNodeId === node.id)) {
+        const sym = e.label.trim();
+        if (seen.has(sym)) return true;
+        seen.add(sym);
+      }
+    }
+    return false;
+  }, [nodes, edges]);
+
+  // Dynamically validate depending on active machineType ('FA', 'DFA', 'NFA', 'PDA', or 'TM')
   const validationResult = useMemo(() => {
     if (machineType === 'TM') {
       return validateTM({ nodes, edges }, blankSymbol);
@@ -61,8 +75,11 @@ export const ExecutionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (machineType === 'PDA') {
       return validatePDA({ nodes, edges }, initialStackSymbol);
     }
-    return machineType === 'NFA' ? validateNFA({ nodes, edges }) : validateDFA({ nodes, edges });
-  }, [nodes, edges, machineType, initialStackSymbol, blankSymbol]);
+    if (machineType === 'NFA' || (machineType === 'FA' && isGraphNFA)) {
+      return validateNFA({ nodes, edges });
+    }
+    return validateDFA({ nodes, edges });
+  }, [nodes, edges, machineType, initialStackSymbol, blankSymbol, isGraphNFA]);
 
   const executionResult = useMemo(() => {
     if (machineType === 'TM') {
@@ -71,10 +88,11 @@ export const ExecutionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (machineType === 'PDA') {
       return executePDA({ nodes, edges }, inputString, { initialStackSymbol });
     }
-    return machineType === 'NFA'
-      ? executeNFA({ nodes, edges }, inputString)
-      : executeDFA({ nodes, edges }, inputString);
-  }, [nodes, edges, machineType, inputString, initialStackSymbol, blankSymbol]);
+    if (machineType === 'NFA' || (machineType === 'FA' && isGraphNFA)) {
+      return executeNFA({ nodes, edges }, inputString);
+    }
+    return executeDFA({ nodes, edges }, inputString);
+  }, [nodes, edges, machineType, inputString, initialStackSymbol, blankSymbol, isGraphNFA]);
 
   const steps = executionResult.steps;
 

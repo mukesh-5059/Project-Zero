@@ -22,20 +22,31 @@ export const SidebarExplorer: React.FC = () => {
   const { nodes, edges, machineType, replaceMachine, setMachineType, setLastMinimizationResult, setLastRegexResult } = useGraph();
   const { expandPanel, setActiveInspectorTab } = useWorkspace();
 
+  const isGraphNFA = React.useMemo(() => {
+    if (edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '')) return true;
+    for (const node of nodes) {
+      const seen = new Set<string>();
+      for (const e of edges.filter((edge) => edge.sourceNodeId === node.id)) {
+        const sym = e.label.trim();
+        if (seen.has(sym)) return true;
+        seen.add(sym);
+      }
+    }
+    return false;
+  }, [nodes, edges]);
+
   const handleNfaToDfaConversion = () => {
-    if (machineType !== 'NFA') return;
     const res = convertNfaToDfa({ nodes, edges });
     if (res.success && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'DFA');
+      replaceMachine([...res.nodes], [...res.edges], 'FA');
     }
   };
 
   const handleDfaMinimization = () => {
-    if (machineType !== 'DFA') return;
     const res = minimizeDFA({ nodes, edges });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'DFA');
+      replaceMachine([...res.nodes], [...res.edges], 'FA');
     }
     setActiveInspectorTab('explanation');
   };
@@ -198,32 +209,31 @@ export const SidebarExplorer: React.FC = () => {
               </span>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
-                  onClick={() => handleStartBlank('DFA')}
-                  className="p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex flex-col space-y-0.5"
+                  onClick={() => handleStartBlank('FA')}
+                  className="p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-accent-primary text-left transition-all flex flex-col space-y-0.5 col-span-2 cursor-pointer group"
                 >
-                  <span className="font-semibold text-txt-primary text-xs">DFA</span>
-                  <span className="text-[10px] text-txt-muted">Deterministic Finite</span>
+                  <span className="font-semibold text-txt-primary text-xs flex items-center justify-between group-hover:text-accent-primary transition-colors">
+                    <span>FA — Finite Automaton</span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 bg-accent-primary/10 text-accent-primary rounded border border-accent-primary/20">
+                      DFA / NFA
+                    </span>
+                  </span>
+                  <span className="text-[10px] text-txt-muted">Dynamic Deterministic & Non-Deterministic State Machine</span>
                 </button>
-                <button
-                  onClick={() => handleStartBlank('NFA')}
-                  className="p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex flex-col space-y-0.5"
-                >
-                  <span className="font-semibold text-txt-primary text-xs">NFA</span>
-                  <span className="text-[10px] text-txt-muted">Non-Deterministic</span>
-                </button>
+
                 <button
                   onClick={() => handleStartBlank('PDA')}
-                  className="p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex flex-col space-y-0.5"
+                  className="p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex flex-col space-y-0.5 cursor-pointer"
                 >
                   <span className="font-semibold text-txt-primary text-xs">PDA</span>
                   <span className="text-[10px] text-txt-muted">Pushdown Automaton</span>
                 </button>
                 <button
                   onClick={() => handleStartBlank('TM')}
-                  className="p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex flex-col space-y-0.5"
+                  className="p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex flex-col space-y-0.5 cursor-pointer"
                 >
-                  <span className="font-semibold text-txt-primary text-xs">Turing Machine</span>
-                  <span className="text-[10px] text-txt-muted">Tape Computation</span>
+                  <span className="font-semibold text-txt-primary text-xs">TM</span>
+                  <span className="text-[10px] text-txt-muted">Turing Machine</span>
                 </button>
               </div>
             </div>
@@ -274,10 +284,10 @@ export const SidebarExplorer: React.FC = () => {
 
               {/* NFA to DFA */}
               <button
-                disabled={machineType !== 'NFA'}
+                disabled={!isGraphNFA && machineType !== 'NFA'}
                 onClick={handleNfaToDfaConversion}
                 className={`w-full p-2 rounded-md border text-left transition-all flex items-center space-x-2 ${
-                  machineType === 'NFA'
+                  isGraphNFA || machineType === 'NFA'
                     ? 'bg-bg-surface2 hover:bg-bg-surface3 border-border-subtle hover:border-accent-cyan cursor-pointer group'
                     : 'bg-bg-surface2/40 border-border-subtle/50 opacity-50 cursor-not-allowed'
                 }`}
@@ -286,17 +296,17 @@ export const SidebarExplorer: React.FC = () => {
                 <div>
                   <div className="font-medium text-txt-primary text-xs">NFA → DFA Subset Construction</div>
                   <div className="text-[10px] text-txt-muted">
-                    {machineType === 'NFA' ? 'Powerset state transformation' : 'Requires NFA mode'}
+                    {isGraphNFA || machineType === 'NFA' ? 'Powerset state transformation' : 'Requires NFA graph'}
                   </div>
                 </div>
               </button>
 
               {/* Hopcroft DFA Minimization */}
               <button
-                disabled={machineType !== 'DFA'}
+                disabled={isGraphNFA}
                 onClick={handleDfaMinimization}
                 className={`w-full p-2 rounded-md border text-left transition-all flex items-center space-x-2 ${
-                  machineType === 'DFA'
+                  !isGraphNFA
                     ? 'bg-bg-surface2 hover:bg-bg-surface3 border-border-subtle hover:border-semantic-accept cursor-pointer group'
                     : 'bg-bg-surface2/40 border-border-subtle/50 opacity-50 cursor-not-allowed'
                 }`}
@@ -305,7 +315,7 @@ export const SidebarExplorer: React.FC = () => {
                 <div>
                   <div className="font-medium text-txt-primary text-xs">Hopcroft DFA Minimization</div>
                   <div className="text-[10px] text-txt-muted">
-                    {machineType === 'DFA' ? 'State equivalence partition' : 'Requires DFA mode'}
+                    {!isGraphNFA ? 'State equivalence partition' : 'Requires DFA (Convert NFA first)'}
                   </div>
                 </div>
               </button>

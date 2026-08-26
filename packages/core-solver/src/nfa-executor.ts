@@ -79,7 +79,8 @@ export function nfaMove(
  */
 export function executeNFA(graph: SolverGraphInput, inputString: string): NFAExecutionResult {
   const validation: DFAValidationResult = validateNFA(graph);
-  if (!validation.isValid) {
+  const fatalErrors = validation.errors.filter((e) => e.code !== 'MISSING_ACCEPTING_STATE');
+  if (fatalErrors.length > 0) {
     return {
       isAccepted: false,
       finalStates: [],
@@ -146,11 +147,12 @@ export function executeNFA(graph: SolverGraphInput, inputString: string): NFAExe
       isAccepting: isAccepted,
     });
 
+    const hasAcceptingStates = graph.nodes.some((n) => n.isAccepting);
     return {
       isAccepted,
       finalStates: currentClosure.map((n) => ({ id: n.id, label: n.label || n.id })),
       acceptingStates: accepting.map((n) => ({ id: n.id, label: n.label || n.id })),
-      rejectionReason: isAccepted ? undefined : 'NON_ACCEPTING_FINAL_STATE',
+      rejectionReason: isAccepted ? undefined : hasAcceptingStates ? 'NON_ACCEPTING_FINAL_STATE' : 'NO_ACCEPTING_STATE',
       steps,
       inputString,
       validationResult: validation,
@@ -205,12 +207,13 @@ export function executeNFA(graph: SolverGraphInput, inputString: string): NFAExe
 
   const finalAccepting = currentClosure.filter((n) => n.isAccepting);
   const isAccepted = finalAccepting.length > 0;
+  const hasAcceptingStates = graph.nodes.some((n) => n.isAccepting);
 
   return {
     isAccepted,
     finalStates: currentClosure.map((n) => ({ id: n.id, label: n.label || n.id })),
     acceptingStates: finalAccepting.map((n) => ({ id: n.id, label: n.label || n.id })),
-    rejectionReason: isAccepted ? undefined : 'NON_ACCEPTING_FINAL_STATE',
+    rejectionReason: isAccepted ? undefined : hasAcceptingStates ? 'NON_ACCEPTING_FINAL_STATE' : 'NO_ACCEPTING_STATE',
     steps,
     inputString,
     validationResult: validation,

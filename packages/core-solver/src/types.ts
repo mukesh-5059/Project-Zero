@@ -4,6 +4,7 @@ import { AutomatonType } from '@project-zero/shared';
 export type DFAErrorCode =
   | 'MISSING_INITIAL_STATE'
   | 'MULTIPLE_INITIAL_STATES'
+  | 'MISSING_ACCEPTING_STATE'
   | 'EPSILON_TRANSITION'
   | 'DUPLICATE_SYMBOL_TRANSITION'
   | 'EMPTY_TRANSITION_SYMBOL';
@@ -11,6 +12,7 @@ export type DFAErrorCode =
 export type NFAErrorCode =
   | 'MISSING_INITIAL_STATE'
   | 'MULTIPLE_INITIAL_STATES'
+  | 'MISSING_ACCEPTING_STATE'
   | 'EMPTY_TRANSITION_SYMBOL'
   | 'DANGLING_TRANSITION_ENDPOINT';
 
@@ -51,6 +53,7 @@ export interface DFAValidationResult {
 export type DFARejectionReason =
   | 'NO_TRANSITION'
   | 'NON_ACCEPTING_FINAL_STATE'
+  | 'NO_ACCEPTING_STATE'
   | 'INVALID_MACHINE';
 
 export interface DFAExecutionStep {

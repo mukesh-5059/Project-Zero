@@ -5,7 +5,7 @@ export interface IBaseEntity {
   readonly createdAt: number;
 }
 
-export type AutomatonType = 'DFA' | 'NFA' | 'PDA' | 'TM';
+export type AutomatonType = 'FA' | 'DFA' | 'NFA' | 'PDA' | 'TM';
 
 export interface AutomatonMetadata {
   readonly id: string;

@@ -136,18 +136,31 @@ export function analyzeMachine(
     }
   }
 
+  const effectiveMachineType =
+    machineType === 'FA'
+      ? (hasNondeterministicBranching ? 'NFA' : 'DFA')
+      : machineType;
+
   const valRes =
-    machineType === 'TM'
+    effectiveMachineType === 'TM'
       ? validateTM(graph)
-      : machineType === 'PDA'
+      : effectiveMachineType === 'PDA'
       ? validatePDA(graph)
-      : machineType === 'NFA'
+      : effectiveMachineType === 'NFA'
       ? validateNFA(graph)
       : validateDFA(graph);
   const completenessRes = analyzeDFACompleteness(graph);
 
   // Generate Observations based strictly on deterministic facts
   const observations: string[] = [];
+
+  if (machineType === 'FA') {
+    observations.push(
+      hasNondeterministicBranching
+        ? 'Finite Automaton Classification: Nondeterministic (NFA) — contains non-deterministic branching or ε-transitions.'
+        : 'Finite Automaton Classification: Deterministic (DFA) — single deterministic transition per symbol with no ε-transitions.'
+    );
+  }
 
   if (!initialNode) {
     observations.push('No initial start state (q₀) is designated.');

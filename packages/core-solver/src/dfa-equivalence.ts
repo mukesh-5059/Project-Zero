@@ -24,8 +24,11 @@ export function compareDFALanguages(
   graphA: SolverGraphInput,
   graphB: SolverGraphInput
 ): DFAEquivalenceResult {
+  const isFatalError = (val: ReturnType<typeof validateDFA>) =>
+    val.errors.some((e) => e.code !== 'MISSING_ACCEPTING_STATE');
+
   const valA = validateDFA(graphA);
-  if (!valA.isValid) {
+  if (isFatalError(valA)) {
     return {
       isEquivalent: false,
       productStatesExplored: 0,
@@ -34,7 +37,7 @@ export function compareDFALanguages(
   }
 
   const valB = validateDFA(graphB);
-  if (!valB.isValid) {
+  if (isFatalError(valB)) {
     return {
       isEquivalent: false,
       productStatesExplored: 0,

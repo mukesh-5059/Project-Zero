@@ -10,9 +10,26 @@ export const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { openPalette } = useCommandPalette();
   const { toggleSidebar, toggleInspector, sidebarCollapsed, inspectorCollapsed } = useWorkspace();
-  const { machineType, setMachineType } = useGraph();
+  const { nodes, edges, machineType, setMachineType } = useGraph();
 
-  const machineTypes: AutomatonType[] = ['DFA', 'NFA', 'PDA', 'TM'];
+  const machineTypes: AutomatonType[] = ['FA', 'PDA', 'TM'];
+
+  // Dynamically evaluate whether an FA is currently DFA or NFA
+  const faSubtype = React.useMemo(() => {
+    if (machineType !== 'FA' && machineType !== 'DFA' && machineType !== 'NFA') return null;
+    const hasEpsilon = edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '');
+    if (hasEpsilon) return 'NFA';
+
+    for (const node of nodes) {
+      const seen = new Set<string>();
+      for (const e of edges.filter((edge) => edge.sourceNodeId === node.id)) {
+        const sym = e.label.trim();
+        if (seen.has(sym)) return 'NFA';
+        seen.add(sym);
+      }
+    }
+    return 'DFA';
+  }, [nodes, edges, machineType]);
 
   return (
     <header className="h-10 bg-bg-surface1 border-b border-border-subtle flex items-center justify-between px-3 select-none z-30 shrink-0 w-full max-w-full overflow-hidden">
@@ -38,20 +55,28 @@ export const Header: React.FC = () => {
 
         {/* Global Machine Type Switcher */}
         <div className="flex items-center space-x-0.5 bg-bg-surface2 border border-border-subtle p-0.5 rounded text-[11px] font-mono">
-          {machineTypes.map((type) => (
-            <button
-              key={type}
-              onClick={() => setMachineType(type)}
-              className={`px-2 py-0.5 rounded transition-all font-bold ${
-                machineType === type
-                  ? 'bg-accent-primary text-white shadow-xs'
-                  : 'text-txt-muted hover:text-txt-primary hover:bg-bg-surface3'
-              }`}
-              title={`Switch workspace to ${type} model`}
-            >
-              {type}
-            </button>
-          ))}
+          {machineTypes.map((type) => {
+            const isSelected = machineType === type || ((type === 'FA') && (machineType === 'DFA' || machineType === 'NFA'));
+            return (
+              <button
+                key={type}
+                onClick={() => setMachineType(type)}
+                className={`px-2 py-0.5 rounded transition-all font-bold flex items-center space-x-1 ${
+                  isSelected
+                    ? 'bg-accent-primary text-white shadow-xs'
+                    : 'text-txt-muted hover:text-txt-primary hover:bg-bg-surface3'
+                }`}
+                title={`Switch workspace to ${type} model`}
+              >
+                <span>{type}</span>
+                {type === 'FA' && isSelected && faSubtype && (
+                  <span className="text-[9px] opacity-80 font-semibold px-1 rounded bg-black/20">
+                    {faSubtype}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

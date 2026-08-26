@@ -29,6 +29,14 @@ export function validateDFA(graph: SolverGraphInput): DFAValidationResult {
     });
   }
 
+  const acceptingNodes = graph.nodes.filter((n) => n.isAccepting);
+  if (acceptingNodes.length === 0) {
+    errors.push({
+      code: 'MISSING_ACCEPTING_STATE',
+      message: 'Missing accepting/final state (F = ∅). Designate at least one state as an accepting state.',
+    });
+  }
+
   const emptySymbolEdges = graph.edges.filter((e) => !e.label || e.label.trim().length === 0);
   if (emptySymbolEdges.length > 0) {
     for (const edge of emptySymbolEdges) {

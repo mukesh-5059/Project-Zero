@@ -22,20 +22,31 @@ export const MachineAnalysisView: React.FC = () => {
     ? explainExecutionRun({ nodes, edges }, inputString, machineType)
     : null;
 
+  const isGraphNFA = React.useMemo(() => {
+    if (edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '')) return true;
+    for (const node of nodes) {
+      const seen = new Set<string>();
+      for (const e of edges.filter((edge) => edge.sourceNodeId === node.id)) {
+        const sym = e.label.trim();
+        if (seen.has(sym)) return true;
+        seen.add(sym);
+      }
+    }
+    return false;
+  }, [nodes, edges]);
+
   const handleNfaToDfaConversion = () => {
-    if (machineType !== 'NFA') return;
     const res = convertNfaToDfa({ nodes, edges });
     if (res.success && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'DFA');
+      replaceMachine([...res.nodes], [...res.edges], 'FA');
     }
   };
 
   const handleDfaMinimization = () => {
-    if (machineType !== 'DFA') return;
     const res = minimizeDFA({ nodes, edges });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'DFA');
+      replaceMachine([...res.nodes], [...res.edges], 'FA');
     }
     setActiveInspectorTab('explanation');
   };
@@ -126,10 +137,10 @@ export const MachineAnalysisView: React.FC = () => {
 
           {/* NFA to DFA Button */}
           <button
-            disabled={machineType !== 'NFA'}
+            disabled={!isGraphNFA && machineType !== 'NFA'}
             onClick={handleNfaToDfaConversion}
             className={`w-full p-2 rounded-md border text-left transition-all flex items-center justify-between group ${
-              machineType === 'NFA'
+              isGraphNFA || machineType === 'NFA'
                 ? 'border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-accent-cyan cursor-pointer'
                 : 'border-border-subtle/50 bg-bg-surface1/40 opacity-50 cursor-not-allowed'
             }`}
@@ -141,21 +152,21 @@ export const MachineAnalysisView: React.FC = () => {
                   NFA → DFA Subset Construction
                 </div>
                 <div className="text-[10px] text-txt-muted">
-                  {machineType === 'NFA' ? 'Powerset state transformation' : 'Requires NFA mode'}
+                  {isGraphNFA || machineType === 'NFA' ? 'Powerset state transformation' : 'Requires NFA graph'}
                 </div>
               </div>
             </div>
             <span className="text-[10px] font-bold text-accent-cyan bg-accent-cyan/10 px-1.5 py-0.5 rounded border border-accent-cyan/20 shrink-0 ml-1">
-              {machineType === 'NFA' ? 'Convert' : 'NFA only'}
+              {isGraphNFA || machineType === 'NFA' ? 'Convert' : 'NFA only'}
             </span>
           </button>
 
           {/* DFA Minimization Button */}
           <button
-            disabled={machineType !== 'DFA'}
+            disabled={isGraphNFA}
             onClick={handleDfaMinimization}
             className={`w-full p-2 rounded-md border text-left transition-all flex items-center justify-between group ${
-              machineType === 'DFA'
+              !isGraphNFA
                 ? 'border-border-subtle bg-bg-surface1 hover:bg-bg-surface2 hover:border-semantic-accept cursor-pointer'
                 : 'border-border-subtle/50 bg-bg-surface1/40 opacity-50 cursor-not-allowed'
             }`}
@@ -167,12 +178,12 @@ export const MachineAnalysisView: React.FC = () => {
                   Hopcroft DFA Minimization
                 </div>
                 <div className="text-[10px] text-txt-muted">
-                  {machineType === 'DFA' ? 'State equivalence partition' : 'Requires DFA mode'}
+                  {!isGraphNFA ? 'State equivalence partition' : 'Requires DFA (Convert NFA first)'}
                 </div>
               </div>
             </div>
             <span className="text-[10px] font-bold text-semantic-accept bg-semantic-accept/10 px-1.5 py-0.5 rounded border border-semantic-accept/20 shrink-0 ml-1">
-              {machineType === 'DFA' ? 'Minimize' : 'DFA only'}
+              {!isGraphNFA ? 'Minimize' : 'DFA only'}
             </span>
           </button>
         </div>

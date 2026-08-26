@@ -70,7 +70,9 @@ describe('DFA Validation & Deterministic Execution Engine', () => {
 
   it('7 & 8. Zero and multiple accepting states', () => {
     const zeroAccNodes = canonicalNodes.map((n) => ({ ...n, isAccepting: false }));
-    expect(validateDFA({ nodes: zeroAccNodes, edges: canonicalEdges }).isValid).toBe(true);
+    const zeroVal = validateDFA({ nodes: zeroAccNodes, edges: canonicalEdges });
+    expect(zeroVal.isValid).toBe(false);
+    expect(zeroVal.errors.some((e) => e.code === 'MISSING_ACCEPTING_STATE')).toBe(true);
 
     const multiAccNodes = canonicalNodes.map((n) => ({ ...n, isAccepting: true }));
     expect(validateDFA({ nodes: multiAccNodes, edges: canonicalEdges }).isValid).toBe(true);
