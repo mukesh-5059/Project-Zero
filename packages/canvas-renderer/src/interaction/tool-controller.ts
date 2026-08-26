@@ -40,6 +40,24 @@ export class ToolController {
       return false;
     }
 
+    const target = event.target as HTMLElement | null;
+    const activeEl = typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
+    const isInputActive = (el: HTMLElement | null): boolean => {
+      if (!el) return false;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable) {
+        return true;
+      }
+      if (typeof el.closest === 'function') {
+        return el.closest('input, textarea, select, [role="dialog"]') !== null;
+      }
+      return false;
+    };
+
+    if (isInputActive(target) || isInputActive(activeEl)) {
+      return false;
+    }
+
     const key = event.key.toLowerCase();
     switch (key) {
       case 'v':

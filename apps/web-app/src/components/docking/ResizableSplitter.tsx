@@ -3,6 +3,7 @@ import { LayoutManager } from './LayoutManager';
 
 interface ResizableSplitterProps {
   direction: 'horizontal' | 'vertical';
+  invert?: boolean;
   currentSize: number;
   minSize: number;
   maxSize: number;
@@ -15,6 +16,7 @@ interface ResizableSplitterProps {
 
 export const ResizableSplitter: React.FC<ResizableSplitterProps> = ({
   direction,
+  invert = false,
   currentSize,
   minSize,
   maxSize,
@@ -39,7 +41,8 @@ export const ResizableSplitter: React.FC<ResizableSplitterProps> = ({
       const currentPos = direction === 'horizontal' ? e.clientX : e.clientY;
       if (lastPosRef.current !== 0) {
         const delta = currentPos - lastPosRef.current;
-        const targetSize = direction === 'horizontal' ? currentSize + delta : currentSize - delta;
+        const effectiveDelta = invert ? -delta : delta;
+        const targetSize = currentSize + effectiveDelta;
         const clamped = LayoutManager.clampSize(targetSize, minSize, maxSize);
         onResize(clamped);
       }
@@ -52,7 +55,8 @@ export const ResizableSplitter: React.FC<ResizableSplitterProps> = ({
       const currentPos = direction === 'horizontal' ? touch.clientX : touch.clientY;
       if (lastPosRef.current !== 0) {
         const delta = currentPos - lastPosRef.current;
-        const targetSize = direction === 'horizontal' ? currentSize + delta : currentSize - delta;
+        const effectiveDelta = invert ? -delta : delta;
+        const targetSize = currentSize + effectiveDelta;
         const clamped = LayoutManager.clampSize(targetSize, minSize, maxSize);
         onResize(clamped);
       }
@@ -76,7 +80,7 @@ export const ResizableSplitter: React.FC<ResizableSplitterProps> = ({
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleDragEnd);
     };
-  }, [isDragging, direction, currentSize, minSize, maxSize, onResize, label, announce]);
+  }, [isDragging, direction, invert, currentSize, minSize, maxSize, onResize, label, announce]);
 
   const handleStartDrag = (clientPos: number) => {
     lastPosRef.current = clientPos;
@@ -91,12 +95,21 @@ export const ResizableSplitter: React.FC<ResizableSplitterProps> = ({
       return;
     }
 
-    const nextSize = LayoutManager.calculateKeyboardSize(
+    let nextSize = LayoutManager.calculateKeyboardSize(
       currentSize,
       e.key,
       e.shiftKey,
       { minSize, maxSize, defaultSize, snapThreshold: 0 }
     );
+
+    if (invert && nextSize !== null) {
+      const step = e.shiftKey ? 50 : 10;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        nextSize = Math.min(maxSize, currentSize + step);
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        nextSize = Math.max(minSize, currentSize - step);
+      }
+    }
 
     if (nextSize !== null) {
       e.preventDefault();
@@ -135,10 +148,10 @@ export const ResizableSplitter: React.FC<ResizableSplitterProps> = ({
         onDoubleClick={handleDoubleClick}
         onKeyDown={handleKeyDown}
         title={`${label} (Double-click to reset to ${defaultSize}px, Arrow keys to resize)`}
-        className={`z-20 shrink-0 transition-colors outline-none select-none forced-colors:border-[ButtonText] ${
+        className={`z-20 shrink-0 relative transition-colors outline-none select-none forced-colors:border-[ButtonText] ${
           direction === 'horizontal'
-            ? 'w-1 cursor-col-resize hover:bg-accent-primary/80 forced-colors:hover:bg-[Highlight]'
-            : 'h-1 cursor-row-resize hover:bg-accent-primary/80 forced-colors:hover:bg-[Highlight]'
+            ? 'w-1.5 cursor-col-resize hover:bg-accent-primary/80 forced-colors:hover:bg-[Highlight] before:absolute before:-inset-x-2 before:top-0 before:bottom-0 before:z-10'
+            : 'h-1.5 cursor-row-resize hover:bg-accent-primary/80 forced-colors:hover:bg-[Highlight] before:absolute before:-inset-y-2 before:left-0 before:right-0 before:z-10'
         } ${
           isDragging
             ? 'bg-accent-primary shadow-md forced-colors:bg-[Highlight]'

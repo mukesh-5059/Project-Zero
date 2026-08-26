@@ -42,56 +42,56 @@ export const MinimizationExplanationView: React.FC = () => {
   };
 
   // Render AST Tree Node Helper
-  const renderASTNodeTree = (node: RegexASTNode, depth: number = 0): React.ReactNode => {
+  const renderASTNodeTree = (node: RegexASTNode, depth: number = 0, keyPath: string = '0'): React.ReactNode => {
     const indent = '│ '.repeat(depth);
     switch (node.type) {
       case 'LITERAL':
         return (
-          <div key={Math.random()} className="text-txt-primary">
+          <div key={keyPath} className="text-txt-primary">
             {indent}└── <span className="font-bold text-accent-primary">Literal ('{node.symbol}')</span>
           </div>
         );
       case 'EPSILON':
         return (
-          <div key={Math.random()} className="text-txt-muted">
+          <div key={keyPath} className="text-txt-muted">
             {indent}└── <span className="font-bold text-txt-secondary">Epsilon (ε)</span>
           </div>
         );
       case 'CONCAT':
         return (
-          <div key={Math.random()} className="space-y-0.5">
+          <div key={keyPath} className="space-y-0.5">
             <div className="text-accent-cyan font-bold">{indent}├── Concatenation (·)</div>
-            {renderASTNodeTree(node.left, depth + 1)}
-            {renderASTNodeTree(node.right, depth + 1)}
+            {renderASTNodeTree(node.left, depth + 1, `${keyPath}-L`)}
+            {renderASTNodeTree(node.right, depth + 1, `${keyPath}-R`)}
           </div>
         );
       case 'UNION':
         return (
-          <div key={Math.random()} className="space-y-0.5">
+          <div key={keyPath} className="space-y-0.5">
             <div className="text-accent-purple font-bold">{indent}├── Union (|)</div>
-            {renderASTNodeTree(node.left, depth + 1)}
-            {renderASTNodeTree(node.right, depth + 1)}
+            {renderASTNodeTree(node.left, depth + 1, `${keyPath}-L`)}
+            {renderASTNodeTree(node.right, depth + 1, `${keyPath}-R`)}
           </div>
         );
       case 'STAR':
         return (
-          <div key={Math.random()} className="space-y-0.5">
+          <div key={keyPath} className="space-y-0.5">
             <div className="text-semantic-warning font-bold">{indent}├── Kleene Star (*)</div>
-            {renderASTNodeTree(node.expression, depth + 1)}
+            {renderASTNodeTree(node.expression, depth + 1, `${keyPath}-sub`)}
           </div>
         );
       case 'PLUS':
         return (
-          <div key={Math.random()} className="space-y-0.5">
+          <div key={keyPath} className="space-y-0.5">
             <div className="text-semantic-accept font-bold">{indent}├── Plus (+)</div>
-            {renderASTNodeTree(node.expression, depth + 1)}
+            {renderASTNodeTree(node.expression, depth + 1, `${keyPath}-sub`)}
           </div>
         );
       case 'OPTIONAL':
         return (
-          <div key={Math.random()} className="space-y-0.5">
+          <div key={keyPath} className="space-y-0.5">
             <div className="text-accent-primary font-bold">{indent}├── Optional (?)</div>
-            {renderASTNodeTree(node.expression, depth + 1)}
+            {renderASTNodeTree(node.expression, depth + 1, `${keyPath}-sub`)}
           </div>
         );
       default:

@@ -18,13 +18,22 @@ export const PDABranchInspectorTab: React.FC = () => {
     );
   }
 
+  if (!executionResult || !('branchTree' in executionResult)) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-txt-muted font-mono text-xs">
+        <GitBranch size={32} className="mb-2 text-border-strong" />
+        <span>No active PDA branch tree telemetry available. Run simulation to inspect branches.</span>
+      </div>
+    );
+  }
+
   const pdaResult = executionResult as PDAExecutionResult;
-  const branchTree = pdaResult.branchTree;
+  const branchTree = pdaResult?.branchTree;
 
   if (!branchTree) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-txt-muted font-mono text-xs">
-        <span>No branch tree telemetry available.</span>
+        <span>No branch tree telemetry available for current input.</span>
       </div>
     );
   }

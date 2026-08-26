@@ -182,7 +182,20 @@ export const CanvasEngineHost: React.FC = () => {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isInputActive = (el: HTMLElement | null): boolean => {
+        if (!el) return false;
+        const tag = el.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable) {
+          return true;
+        }
+        if (typeof el.closest === 'function') {
+          return el.closest('input, textarea, select, [role="dialog"]') !== null;
+        }
+        return false;
+      };
+
+      if (isInputActive(target) || isInputActive(activeEl)) {
         return;
       }
 

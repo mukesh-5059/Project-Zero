@@ -74,6 +74,7 @@ const AppShell: React.FC = () => {
           {!bottomPanelCollapsed && !bottomPanelHidden && (
             <ResizableDivider
               direction="vertical"
+              invert={true}
               currentSize={bottomPanelHeight}
               minSize={PANEL_CONSTRAINTS.bottomPanel.minSize}
               maxSize={PANEL_CONSTRAINTS.bottomPanel.maxSize}
@@ -93,6 +94,7 @@ const AppShell: React.FC = () => {
         {!inspectorCollapsed && !inspectorHidden && (
           <ResizableDivider
             direction="horizontal"
+            invert={true}
             currentSize={inspectorWidth}
             minSize={PANEL_CONSTRAINTS.inspector.minSize}
             maxSize={PANEL_CONSTRAINTS.inspector.maxSize}

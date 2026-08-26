@@ -186,8 +186,21 @@ export const ExecutionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Centralized keyboard shortcuts for simulation execution
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const targetTag = (e.target as HTMLElement)?.tagName?.toUpperCase();
-      if (targetTag === 'INPUT' || targetTag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) {
+      const target = e.target as HTMLElement | null;
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isInputActive = (el: HTMLElement | null): boolean => {
+        if (!el) return false;
+        const tag = el.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable) {
+          return true;
+        }
+        if (typeof el.closest === 'function') {
+          return el.closest('input, textarea, select, [role="dialog"], [role="separator"]') !== null;
+        }
+        return false;
+      };
+
+      if (isInputActive(target) || isInputActive(activeEl)) {
         return;
       }
 

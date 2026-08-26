@@ -3,6 +3,7 @@ import { ResizableSplitter } from './docking/ResizableSplitter';
 
 interface ResizableDividerProps {
   direction: 'horizontal' | 'vertical';
+  invert?: boolean;
   currentSize?: number;
   minSize?: number;
   maxSize?: number;
@@ -15,6 +16,7 @@ interface ResizableDividerProps {
 
 export const ResizableDivider: React.FC<ResizableDividerProps> = ({
   direction,
+  invert = false,
   currentSize = 250,
   minSize = 150,
   maxSize = 500,
@@ -27,6 +29,7 @@ export const ResizableDivider: React.FC<ResizableDividerProps> = ({
   return (
     <ResizableSplitter
       direction={direction}
+      invert={invert}
       currentSize={currentSize}
       minSize={minSize}
       maxSize={maxSize}

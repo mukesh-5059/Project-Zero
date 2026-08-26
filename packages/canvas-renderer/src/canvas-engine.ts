@@ -186,6 +186,15 @@ export class CanvasEngine implements ICanvasEngine {
           const node = this.stateRenderer.getStateNode(id);
           if (node) {
             this.damageTracker.addDirtyWorldBox(getNodeBoundingBox(node));
+            const connectedEdges = this.edgeRenderer.getEdges().filter(
+              (e) => e.sourceNodeId === id || e.targetNodeId === id
+            );
+            for (let i = 0; i < connectedEdges.length; i++) {
+              const geom = this.edgeRenderer.computeGeometry(connectedEdges[i], this.stateRenderer);
+              if (geom) {
+                this.damageTracker.addDirtyWorldBox(getEdgeBoundingBox(geom));
+              }
+            }
           }
           for (let i = 0; i < this.nodeMovedListeners.length; i++) {
             this.nodeMovedListeners[i](id, newX, newY);
@@ -467,9 +476,22 @@ export class CanvasEngine implements ICanvasEngine {
   // ---------------------------------------------------------------------------
 
   public resize(width: number, height: number, dpr?: number): void {
+    const oldCenter = this.viewport.getCenter();
     this.viewport.resize(width, height);
     if (dpr !== undefined) {
       this.viewport.setDevicePixelRatio(dpr);
+    }
+    const newCenter = this.viewport.getCenter();
+    const deltaX = newCenter.x - oldCenter.x;
+    const deltaY = newCenter.y - oldCenter.y;
+    if (deltaX !== 0 || deltaY !== 0) {
+      const zoom = this.camera.getState().zoom;
+      const currentCamera = this.camera.getState();
+      this.camera.setPosition(
+        currentCamera.x + deltaX / zoom,
+        currentCamera.y + deltaY / zoom,
+        true
+      );
     }
     this.updateCanvasSize();
     this.damageTracker.invalidateAll();
@@ -872,16 +894,27 @@ export class CanvasEngine implements ICanvasEngine {
     );
 
     if (changed || this.interactionEngine.getState() !== 'Idle') {
-      this.damageTracker.addDirtyScreenBox({
-        minX: event.screenPoint.x - 50,
-        minY: event.screenPoint.y - 50,
-        maxX: event.screenPoint.x + 50,
-        maxY: event.screenPoint.y + 50,
-        width: 100,
-        height: 100,
-        centerX: event.screenPoint.x,
-        centerY: event.screenPoint.y,
-      });
+      const currentState = this.interactionEngine.getState();
+      if (
+        currentState === 'Panning' ||
+        currentState === 'DraggingNode' ||
+        currentState === 'DraggingSelection' ||
+        currentState === 'MarqueeSelection' ||
+        currentState === 'CreatingEdge'
+      ) {
+        this.damageTracker.invalidateAll();
+      } else {
+        this.damageTracker.addDirtyScreenBox({
+          minX: event.screenPoint.x - 50,
+          minY: event.screenPoint.y - 50,
+          maxX: event.screenPoint.x + 50,
+          maxY: event.screenPoint.y + 50,
+          width: 100,
+          height: 100,
+          centerX: event.screenPoint.x,
+          centerY: event.screenPoint.y,
+        });
+      }
       this.invalidate();
     }
     return changed;
