@@ -400,10 +400,11 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
       return { ...state, activeTool: action.tool };
 
     case 'SET_MACHINE_TYPE': {
-      if (state.machineType === action.machineType) return state;
+      const normalizedType = (action.machineType === 'DFA' || action.machineType === 'NFA') ? 'FA' : action.machineType;
+      if (state.machineType === normalizedType) return state;
       return {
         ...state,
-        machineType: action.machineType,
+        machineType: normalizedType,
         past: [...state.past, createSnapshot(state)],
         future: [],
       };
@@ -430,11 +431,12 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
     }
 
     case 'REPLACE_MACHINE': {
+      const normalizedType = (action.machineType === 'DFA' || action.machineType === 'NFA') ? 'FA' : action.machineType;
       return {
         ...state,
         nodes: [...action.nodes],
         edges: recomputeParallelIndices(action.edges),
-        machineType: action.machineType,
+        machineType: normalizedType,
         initialStackSymbol: action.initialStackSymbol ?? (action.machineType === 'PDA' ? 'Z0' : state.initialStackSymbol),
         blankSymbol: action.blankSymbol ?? (action.machineType === 'TM' ? '□' : state.blankSymbol),
         selectedNodeIds: [],

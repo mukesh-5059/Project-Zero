@@ -99,7 +99,7 @@ export function deserializeMachine(jsonInput: string | object): SerializedDFA {
 
   if (data.machineType !== undefined) {
     const raw = String(data.machineType).toUpperCase();
-    if (raw !== 'DFA' && raw !== 'NFA' && raw !== 'PDA' && raw !== 'TM') {
+    if (raw !== 'DFA' && raw !== 'NFA' && raw !== 'PDA' && raw !== 'TM' && raw !== 'FA') {
       throw new Error(`Unsupported or invalid machine type: ${data.machineType}`);
     }
   }

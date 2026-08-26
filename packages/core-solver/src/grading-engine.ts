@@ -33,23 +33,33 @@ export function gradeSubmission(
   const positiveEvaluations: ExampleEvaluation[] = [];
   const negativeEvaluations: ExampleEvaluation[] = [];
 
+  // Derive effective machine type if 'FA' is passed
+  const effectiveCandidateType =
+    candidateMachineType === 'FA'
+      ? candidateGraph.edges.some(
+          (e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === ''
+        )
+        ? 'NFA'
+        : 'DFA'
+      : candidateMachineType;
+
   // 1. Structural Validation
   let isValidStructure = false;
   let validationErrorMessage = '';
 
-  if (candidateMachineType === 'DFA') {
+  if (effectiveCandidateType === 'DFA') {
     const val = validateDFA(candidateGraph);
     isValidStructure = val.isValid;
     if (!isValidStructure) validationErrorMessage = val.errors[0]?.message || 'Invalid DFA structure';
-  } else if (candidateMachineType === 'NFA') {
+  } else if (effectiveCandidateType === 'NFA') {
     const val = validateNFA(candidateGraph);
     isValidStructure = val.isValid;
     if (!isValidStructure) validationErrorMessage = val.errors[0]?.message || 'Invalid NFA structure';
-  } else if (candidateMachineType === 'PDA') {
+  } else if (effectiveCandidateType === 'PDA') {
     const val = validatePDA(candidateGraph, initialStackSymbol);
     isValidStructure = val.isValid;
     if (!isValidStructure) validationErrorMessage = val.errors[0]?.message || 'Invalid PDA structure';
-  } else if (candidateMachineType === 'TM') {
+  } else if (effectiveCandidateType === 'TM') {
     const val = validateTM(candidateGraph, blankSymbol);
     isValidStructure = val.isValid;
     if (!isValidStructure) validationErrorMessage = val.errors[0]?.message || 'Invalid TM structure';
@@ -82,7 +92,12 @@ export function gradeSubmission(
   });
 
   // 2. Machine Type Matching Check
-  if (candidateMachineType !== challenge.targetMachineType) {
+  const isTypeMatch =
+    candidateMachineType === challenge.targetMachineType ||
+    effectiveCandidateType === challenge.targetMachineType ||
+    (candidateMachineType === 'FA' && (challenge.targetMachineType === 'DFA' || challenge.targetMachineType === 'NFA'));
+
+  if (!isTypeMatch) {
     failedChecks.push({
       name: 'Machine Type Requirement',
       passed: false,
@@ -131,13 +146,13 @@ export function gradeSubmission(
 
   // 4. Execution Helper for Candidate Machine
   const executeCandidate = (inputStr: string): boolean => {
-    if (candidateMachineType === 'DFA') {
+    if (effectiveCandidateType === 'DFA') {
       return executeDFA(candidateGraph, inputStr).isAccepted;
-    } else if (candidateMachineType === 'NFA') {
+    } else if (effectiveCandidateType === 'NFA') {
       return executeNFA(candidateGraph, inputStr).isAccepted;
-    } else if (candidateMachineType === 'PDA') {
+    } else if (effectiveCandidateType === 'PDA') {
       return executePDA(candidateGraph, inputStr, { initialStackSymbol }).isAccepted;
-    } else if (candidateMachineType === 'TM') {
+    } else if (effectiveCandidateType === 'TM') {
       return executeTM(candidateGraph, inputStr, { blankSymbol }).isAccepted;
     }
     return false;
@@ -194,12 +209,12 @@ export function gradeSubmission(
   if (
     challenge.referenceGraph &&
     challenge.referenceMachineType &&
-    (candidateMachineType === 'DFA' || candidateMachineType === 'NFA') &&
+    (effectiveCandidateType === 'DFA' || effectiveCandidateType === 'NFA') &&
     (challenge.referenceMachineType === 'DFA' || challenge.referenceMachineType === 'NFA')
   ) {
     const eqResult = compareAutomataLanguages(
       candidateGraph,
-      candidateMachineType,
+      effectiveCandidateType,
       challenge.referenceGraph,
       challenge.referenceMachineType
     );
