@@ -123,8 +123,9 @@ export const ExecutionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // NFA step: use nextStates (or epsilonClosure) for current active state set
       return currentStep.nextStates.map((s) => s.id);
     } else {
-      // DFA step
-      return currentStep.currentStateId ? [currentStep.currentStateId] : [];
+      // DFA / PDA / TM step: highlight target state after transition if present, otherwise current state
+      const targetId = currentStep.nextStateId || currentStep.currentStateId;
+      return targetId ? [targetId] : [];
     }
   }, [currentStep]);
 

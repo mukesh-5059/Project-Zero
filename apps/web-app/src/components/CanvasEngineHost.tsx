@@ -35,7 +35,7 @@ export const CanvasEngineHost: React.FC = () => {
     setTool,
   } = useGraph();
 
-  const { activeStateIds, activeEdgeId } = useExecution();
+  const { activeStateIds, activeEdgeId, currentStep } = useExecution();
 
   // Keep refs for selection IDs so event handlers inside mount effect do not cause engine recreation
   const selectedNodeIdsRef = useRef(selectedNodeIds);
@@ -59,15 +59,45 @@ export const CanvasEngineHost: React.FC = () => {
     engineRef.current?.setStateNodes(highlightedNodes);
   }, [nodes, activeStateIds, selectedNodeIds]);
 
-  // Highlight active transition edge transiently (decoupled from isSelected)
+  // Highlight active transition edge(s) transiently (decoupled from isSelected)
   useEffect(() => {
-    const highlightedEdges = edges.map((e) => ({
-      ...e,
-      isSelected: selectedEdgeIds.includes(e.id),
-      isExecutionHighlighted: activeEdgeId ? e.id === activeEdgeId : false,
-    }));
+    const activeSet = new Set(activeStateIds);
+    const prevActiveSet = new Set<string>();
+
+    if (currentStep) {
+      if ('epsilonClosure' in currentStep && Array.isArray(currentStep.epsilonClosure)) {
+        currentStep.epsilonClosure.forEach((s) => prevActiveSet.add(s.id));
+      }
+      if ('currentStates' in currentStep && Array.isArray(currentStep.currentStates)) {
+        currentStep.currentStates.forEach((s) => prevActiveSet.add(s.id));
+      }
+      if ('currentStateId' in currentStep && currentStep.currentStateId) {
+        prevActiveSet.add(currentStep.currentStateId);
+      }
+    }
+
+    const combinedSet = new Set([...activeSet, ...prevActiveSet]);
+    const readSym = currentStep?.readSymbol ? String(currentStep.readSymbol).trim() : null;
+
+    const highlightedEdges = edges.map((e) => {
+      const isDfaMatch = activeEdgeId ? e.id === activeEdgeId : false;
+      const isNfaMatch =
+        combinedSet.size > 0 && combinedSet.has(e.sourceNodeId) && combinedSet.has(e.targetNodeId)
+          ? !e.label ||
+            e.label === 'ε' ||
+            e.label === 'λ' ||
+            e.label.trim() === '' ||
+            (readSym !== null && e.label.trim() === readSym)
+          : false;
+
+      return {
+        ...e,
+        isSelected: selectedEdgeIds.includes(e.id),
+        isExecutionHighlighted: isDfaMatch || isNfaMatch,
+      };
+    });
     engineRef.current?.setTransitionEdges(highlightedEdges);
-  }, [edges, activeEdgeId, selectedEdgeIds]);
+  }, [edges, activeEdgeId, activeStateIds, selectedEdgeIds, currentStep]);
 
   // ---------------------------------------------------------------------------
   // Mount / Unmount — create engine, attach DOM event bridge, start observers

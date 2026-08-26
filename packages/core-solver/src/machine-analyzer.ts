@@ -286,7 +286,13 @@ export function explainExecutionRun(
     if (!isNFA && derivations.length > 0) {
       const derivStr = derivations.map((d) => d.formalNotation).join('\n');
       const finalStep = execResult.steps[execResult.steps.length - 1] as DFAExecutionStep;
-      const finalStateLabel = finalStep.currentStateLabel || finalStep.currentStateId || 'q_final';
+      const finalStateLabel =
+        execResult.finalStateLabel ||
+        finalStep.nextStateLabel ||
+        finalStep.nextStateId ||
+        finalStep.currentStateLabel ||
+        finalStep.currentStateId ||
+        'q_final';
 
       formalProofText = `${derivStr}\n\nδ*(${graph.nodes.find((n) => n.isInitial)?.label || 'q₀'}, "${inputString}") = ${finalStateLabel}\n\nSince '${finalStateLabel}' ${
         execResult.isAccepted ? '∈ F (Accepting Set), therefore string is ACCEPTED.' : '∉ F (Accepting Set), therefore string is REJECTED.'
