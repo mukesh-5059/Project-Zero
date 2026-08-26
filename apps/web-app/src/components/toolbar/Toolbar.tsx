@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useGraph } from '../../context/GraphContext';
 import { useExecution } from '../../context/ExecutionContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { convertNfaToDfa, minimizeDFA } from '@project-zero/core-solver';
 import { serializeMachine, deserializeMachine } from '../../utils/serialization';
-import { RegexModal } from '../modals/RegexModal';
 import { IToolbarItem } from './types';
 import { ToolbarButton } from './ToolbarButton';
 import { ToolbarGroup } from './ToolbarGroup';
@@ -19,30 +17,13 @@ import {
   SkipBack,
   RotateCcw,
   RefreshCw,
-  Zap,
-  Code,
-  Bot,
-  ZoomIn,
-  ZoomOut,
-  Maximize,
-  Grid,
   Save,
   FolderOpen,
   FilePlus,
-  Sparkles,
-  ChevronDown,
 } from 'lucide-react';
-import { MachineAnalysisModal } from '../modals/MachineAnalysisModal';
 
 export const DesktopToolbar: React.FC = () => {
-  const [isRegexModalOpen, setIsRegexModalOpen] = useState<boolean>(false);
-  const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState<boolean>(false);
-
-  const [isTransformMenuOpen, setIsTransformMenuOpen] = useState<boolean>(false);
-  const [isAnalyzeMenuOpen, setIsAnalyzeMenuOpen] = useState<boolean>(false);
-  const [isViewMenuOpen, setIsViewMenuOpen] = useState<boolean>(false);
-
-  const { setActiveBottomTab, setActiveInspectorTab, expandPanel } = useWorkspace();
+  const { setActiveBottomTab, expandPanel } = useWorkspace();
   const {
     activeTool,
     setTool,
@@ -57,29 +38,18 @@ export const DesktopToolbar: React.FC = () => {
     initialStackSymbol,
     blankSymbol,
     replaceMachine,
-    setLastMinimizationResult,
-    setLastRegexResult,
   } = useGraph();
 
-  const handleDfaMinimization = () => {
-    if (machineType !== 'DFA') return;
-    const res = minimizeDFA({ nodes, edges });
-    setLastMinimizationResult(res);
-
-    if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'DFA');
-    }
-    setActiveInspectorTab('explanation');
-  };
   const { run, step, back, reset, canRun, canStep, canBack, canReset, isPlaying } = useExecution();
-  const [gridSnap, setGridSnap] = useState<boolean>(true);
 
   // Map toolbar button IDs to CanvasTool values
   const handleToolSelect = (toolId: string): void => {
     switch (toolId) {
       case 'select':
-      case 'box-select':
         setTool('select');
+        break;
+      case 'box-select':
+        setTool('box');
         break;
       case 'state':
         setTool('add-state');
@@ -99,7 +69,7 @@ export const DesktopToolbar: React.FC = () => {
   const isToolActive = (toolId: string): boolean => {
     switch (toolId) {
       case 'select':      return activeTool === 'select';
-      case 'box-select':  return false; // marquee is engine-internal
+      case 'box-select':  return activeTool === 'box';
       case 'state':       return activeTool === 'add-state';
       case 'edge':        return activeTool === 'add-transition';
       case 'erase':       return activeTool === 'erase';
@@ -313,132 +283,11 @@ export const DesktopToolbar: React.FC = () => {
     input.click();
   };
 
-  const handleNfaToDfaConversion = () => {
-    if (machineType !== 'NFA') return;
-    const res = convertNfaToDfa({ nodes, edges });
-    if (res.success && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'DFA');
-    }
-  };
-
-  // 4. Conversion Controls Pod
-  const conversionControls: IToolbarItem[] = [
-    {
-      id: 'conv-subset',
-      label: 'NFA→DFA',
-      category: 'conversion',
-      icon: RefreshCw,
-      shortcut: 'Alt+C',
-      tooltip: machineType === 'NFA' ? 'Convert NFA to equivalent DFA via Subset Construction' : 'NFA to DFA Conversion (Active in NFA mode)',
-      isDisabled: machineType !== 'NFA',
-      onClick: handleNfaToDfaConversion,
-    },
-    {
-      id: 'conv-hopcroft',
-      label: 'Minimize',
-      category: 'conversion',
-      icon: Zap,
-      shortcut: 'Alt+M',
-      tooltip: machineType === 'DFA' ? 'Minimize DFA using Partition Refinement' : 'DFA minimization requires DFA mode.',
-      isDisabled: machineType !== 'DFA',
-      onClick: handleDfaMinimization,
-    },
-    {
-      id: 'conv-regex',
-      label: 'RegEx',
-      category: 'conversion',
-      icon: Code,
-      shortcut: 'Alt+R',
-      tooltip: 'Construct ε-NFA from Regular Expression',
-      isDisabled: false,
-      onClick: () => setIsRegexModalOpen(true),
-    },
-  ];
-
-
-
-  // 5. AI Controls Pod
-  const aiControls: IToolbarItem[] = [
-    {
-      id: 'ai-analyze',
-      label: 'Analyze',
-      category: 'ai',
-      icon: Sparkles,
-      shortcut: 'Alt+A',
-      tooltip: 'Analyze Machine in Right Inspector Panel',
-      isDisabled: false,
-      onClick: () => {
-        expandPanel('inspector');
-        setActiveInspectorTab('analysis');
-      },
-    },
-    {
-      id: 'ai-ask',
-      label: 'AI Tutor',
-      category: 'ai',
-      icon: Bot,
-      shortcut: 'Ctrl+K',
-      tooltip: 'Ask AI Automata Tutor in Right Inspector',
-      isDisabled: false,
-      onClick: () => {
-        expandPanel('inspector');
-        setActiveInspectorTab('analysis');
-      },
-    },
-  ];
-
-  // 6. View Controls Pod
-  const viewControls: IToolbarItem[] = [
-    {
-      id: 'view-zoomin',
-      label: 'Zoom In',
-      category: 'view',
-      icon: ZoomIn,
-      shortcut: '+',
-      tooltip: 'Zoom In Canvas',
-      onClick: () => {
-        window.dispatchEvent(new CustomEvent('projectzero:zoom', { detail: { factor: 1.2 } }));
-      },
-    },
-    {
-      id: 'view-zoomout',
-      label: 'Zoom Out',
-      category: 'view',
-      icon: ZoomOut,
-      shortcut: '-',
-      tooltip: 'Zoom Out Canvas',
-      onClick: () => {
-        window.dispatchEvent(new CustomEvent('projectzero:zoom', { detail: { factor: 0.8 } }));
-      },
-    },
-    {
-      id: 'view-fit',
-      label: 'Fit',
-      category: 'view',
-      icon: Maximize,
-      shortcut: 'Shift+1',
-      tooltip: 'Fit Canvas to Screen',
-      onClick: () => {
-        window.dispatchEvent(new CustomEvent('projectzero:fitview'));
-      },
-    },
-    {
-      id: 'view-snap',
-      label: 'Snap',
-      category: 'view',
-      icon: Grid,
-      shortcut: 'Shift+G',
-      tooltip: 'Toggle Grid Snap',
-      isActive: gridSnap,
-      onClick: () => setGridSnap((prev) => !prev),
-    },
-  ];
-
   return (
     <div
       role="toolbar"
       aria-label="Canvas Workspace Toolbar"
-      className="h-10 bg-bg-surface1/90 backdrop-blur-md border-b border-border-subtle flex items-center justify-between px-3 select-none z-20 space-x-2 w-full max-w-full overflow-x-auto overflow-y-hidden shrink-0"
+      className="h-10 bg-bg-surface1/90 backdrop-blur-md border-b border-border-subtle flex items-center justify-between px-3 select-none z-20 space-x-2 w-full max-w-full overflow-hidden shrink-0"
     >
       {/* Primary Tools Pods (Selection, Creation, Execution) */}
       <div className="flex items-center space-x-1.5 shrink-0">
@@ -460,159 +309,6 @@ export const DesktopToolbar: React.FC = () => {
           ))}
         </ToolbarGroup>
       </div>
-
-      {/* Secondary Tools Pods — Full on Desktop (>1600px), Adaptive Dropdowns on Laptop (1280px-1600px) */}
-      <div className="flex items-center space-x-1.5 shrink-0">
-        {/* Full Desktop Pods */}
-        <div className="hidden 2xl:flex items-center space-x-1.5">
-          <ToolbarGroup label="Automata Conversions">
-            {conversionControls.map((item) => (
-              <ToolbarButton key={item.id} item={item} />
-            ))}
-          </ToolbarGroup>
-
-          <ToolbarGroup label="AI Tutor Controls">
-            {aiControls.map((item) => (
-              <ToolbarButton key={item.id} item={item} />
-            ))}
-          </ToolbarGroup>
-
-          <ToolbarGroup label="Canvas View Controls">
-            {viewControls.map((item) => (
-              <ToolbarButton key={item.id} item={item} />
-            ))}
-          </ToolbarGroup>
-        </div>
-
-        {/* Adaptive Laptop Dropdown Menus (<1600px) */}
-        <div className="flex 2xl:hidden items-center space-x-1">
-          {/* Transform Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setIsTransformMenuOpen((prev) => !prev);
-                setIsAnalyzeMenuOpen(false);
-                setIsViewMenuOpen(false);
-              }}
-              className="h-7 px-2 bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle rounded text-xs font-medium text-text-primary flex items-center space-x-1 transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-accent-cyan" />
-              <span>Transform</span>
-              <ChevronDown className="w-3 h-3 text-text-muted" />
-            </button>
-            {isTransformMenuOpen && (
-              <div className="absolute right-0 mt-1 w-44 bg-bg-surface1 border border-border-subtle rounded shadow-xl py-1 z-30">
-                {conversionControls.map((item) => (
-                  <button
-                    key={item.id}
-                    disabled={item.isDisabled}
-                    onClick={() => {
-                      item.onClick?.();
-                      setIsTransformMenuOpen(false);
-                    }}
-                    className="w-full px-3 py-1.5 text-left text-xs flex items-center justify-between text-text-primary hover:bg-bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <item.icon className="w-3.5 h-3.5 text-accent-cyan" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.shortcut && <span className="text-[10px] text-text-muted">{item.shortcut}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Analyze Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setIsAnalyzeMenuOpen((prev) => !prev);
-                setIsTransformMenuOpen(false);
-                setIsViewMenuOpen(false);
-              }}
-              className="h-7 px-2 bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle rounded text-xs font-medium text-text-primary flex items-center space-x-1 transition-colors"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-accent-purple" />
-              <span>Analyze</span>
-              <ChevronDown className="w-3 h-3 text-text-muted" />
-            </button>
-            {isAnalyzeMenuOpen && (
-              <div className="absolute right-0 mt-1 w-44 bg-bg-surface1 border border-border-subtle rounded shadow-xl py-1 z-30">
-                {aiControls.map((item) => (
-                  <button
-                    key={item.id}
-                    disabled={item.isDisabled}
-                    onClick={() => {
-                      item.onClick?.();
-                      setIsAnalyzeMenuOpen(false);
-                    }}
-                    className="w-full px-3 py-1.5 text-left text-xs flex items-center justify-between text-text-primary hover:bg-bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <item.icon className="w-3.5 h-3.5 text-accent-purple" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.shortcut && <span className="text-[10px] text-text-muted">{item.shortcut}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* View Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setIsViewMenuOpen((prev) => !prev);
-                setIsTransformMenuOpen(false);
-                setIsAnalyzeMenuOpen(false);
-              }}
-              className="h-7 px-2 bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle rounded text-xs font-medium text-text-primary flex items-center space-x-1 transition-colors"
-            >
-              <Maximize className="w-3.5 h-3.5 text-accent-blue" />
-              <span>View</span>
-              <ChevronDown className="w-3 h-3 text-text-muted" />
-            </button>
-            {isViewMenuOpen && (
-              <div className="absolute right-0 mt-1 w-40 bg-bg-surface1 border border-border-subtle rounded shadow-xl py-1 z-30">
-                {viewControls.map((item) => (
-                  <button
-                    key={item.id}
-                    disabled={item.isDisabled}
-                    onClick={() => {
-                      item.onClick?.();
-                      setIsViewMenuOpen(false);
-                    }}
-                    className="w-full px-3 py-1.5 text-left text-xs flex items-center justify-between text-text-primary hover:bg-bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <item.icon className="w-3.5 h-3.5 text-accent-blue" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.shortcut && <span className="text-[10px] text-text-muted">{item.shortcut}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <RegexModal
-        isOpen={isRegexModalOpen}
-        onClose={() => setIsRegexModalOpen(false)}
-        onGenerate={(newNodes, newEdges, regexResult, inputRegex) => {
-          replaceMachine(newNodes, newEdges, 'NFA');
-          setLastRegexResult({ inputRegex, result: regexResult });
-          setActiveInspectorTab('explanation');
-        }}
-      />
-
-      <MachineAnalysisModal
-        isOpen={isAnalysisModalOpen}
-        onClose={() => setIsAnalysisModalOpen(false)}
-      />
     </div>
   );
 };

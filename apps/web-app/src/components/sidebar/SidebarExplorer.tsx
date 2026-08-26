@@ -7,16 +7,38 @@ import {
   Sparkles,
   ArrowRightLeft,
   Search,
+  Code,
 } from 'lucide-react';
 import { useGraph } from '../../context/GraphContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { AutomatonType } from '@project-zero/shared';
+import { convertNfaToDfa, minimizeDFA } from '@project-zero/core-solver';
+import { RegexModal } from '../modals/RegexModal';
 
 export const SidebarExplorer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'create' | 'convert' | 'analyze' | 'templates'>('create');
   const [searchQuery, setSearchQuery] = useState('');
-  const { nodes, machineType, replaceMachine, setMachineType } = useGraph();
+  const [isRegexModalOpen, setIsRegexModalOpen] = useState(false);
+  const { nodes, edges, machineType, replaceMachine, setMachineType, setLastMinimizationResult, setLastRegexResult } = useGraph();
   const { expandPanel, setActiveInspectorTab } = useWorkspace();
+
+  const handleNfaToDfaConversion = () => {
+    if (machineType !== 'NFA') return;
+    const res = convertNfaToDfa({ nodes, edges });
+    if (res.success && res.nodes.length > 0) {
+      replaceMachine([...res.nodes], [...res.edges], 'DFA');
+    }
+  };
+
+  const handleDfaMinimization = () => {
+    if (machineType !== 'DFA') return;
+    const res = minimizeDFA({ nodes, edges });
+    setLastMinimizationResult(res);
+    if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
+      replaceMachine([...res.nodes], [...res.edges], 'DFA');
+    }
+    setActiveInspectorTab('explanation');
+  };
 
   // On initial mount, populate canvas with default DFA if canvas is empty
   React.useEffect(() => {
@@ -236,45 +258,55 @@ export const SidebarExplorer: React.FC = () => {
               Active Context: {machineType}
             </span>
             <div className="space-y-1">
+              {/* RegEx to NFA */}
               <button
-                onClick={() => {
-                  expandPanel('inspector');
-                  setActiveInspectorTab('analysis');
-                }}
-                className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex items-center space-x-2"
+                onClick={() => setIsRegexModalOpen(true)}
+                className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-accent-primary text-left transition-all flex items-center space-x-2 group cursor-pointer"
               >
-                <ArrowRightLeft size={14} className="text-accent-primary shrink-0" />
+                <Code size={14} className="text-accent-primary shrink-0 group-hover:scale-110 transition-transform" />
                 <div>
-                  <div className="font-medium text-txt-primary">NFA → DFA Subset Construction</div>
-                  <div className="text-[10px] text-txt-muted">Powerset state transformation</div>
+                  <div className="font-medium text-txt-primary text-xs group-hover:text-accent-primary transition-colors">
+                    RegEx → Thompson ε-NFA
+                  </div>
+                  <div className="text-[10px] text-txt-muted">Convert expression to state machine</div>
                 </div>
               </button>
 
+              {/* NFA to DFA */}
               <button
-                onClick={() => {
-                  expandPanel('inspector');
-                  setActiveInspectorTab('analysis');
-                }}
-                className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex items-center space-x-2"
+                disabled={machineType !== 'NFA'}
+                onClick={handleNfaToDfaConversion}
+                className={`w-full p-2 rounded-md border text-left transition-all flex items-center space-x-2 ${
+                  machineType === 'NFA'
+                    ? 'bg-bg-surface2 hover:bg-bg-surface3 border-border-subtle hover:border-accent-cyan cursor-pointer group'
+                    : 'bg-bg-surface2/40 border-border-subtle/50 opacity-50 cursor-not-allowed'
+                }`}
               >
-                <Zap size={14} className="text-semantic-warning shrink-0" />
+                <ArrowRightLeft size={14} className="text-accent-cyan shrink-0" />
                 <div>
-                  <div className="font-medium text-txt-primary">Hopcroft DFA Minimization</div>
-                  <div className="text-[10px] text-txt-muted">State equivalence partition</div>
+                  <div className="font-medium text-txt-primary text-xs">NFA → DFA Subset Construction</div>
+                  <div className="text-[10px] text-txt-muted">
+                    {machineType === 'NFA' ? 'Powerset state transformation' : 'Requires NFA mode'}
+                  </div>
                 </div>
               </button>
 
+              {/* Hopcroft DFA Minimization */}
               <button
-                onClick={() => {
-                  expandPanel('inspector');
-                  setActiveInspectorTab('analysis');
-                }}
-                className="w-full p-2 rounded-md bg-bg-surface2 hover:bg-bg-surface3 border border-border-subtle hover:border-border-strong text-left transition-all flex items-center space-x-2"
+                disabled={machineType !== 'DFA'}
+                onClick={handleDfaMinimization}
+                className={`w-full p-2 rounded-md border text-left transition-all flex items-center space-x-2 ${
+                  machineType === 'DFA'
+                    ? 'bg-bg-surface2 hover:bg-bg-surface3 border-border-subtle hover:border-semantic-accept cursor-pointer group'
+                    : 'bg-bg-surface2/40 border-border-subtle/50 opacity-50 cursor-not-allowed'
+                }`}
               >
-                <Binary size={14} className="text-semantic-accept shrink-0" />
+                <Zap size={14} className="text-semantic-accept shrink-0" />
                 <div>
-                  <div className="font-medium text-txt-primary">State Elimination → RegEx</div>
-                  <div className="text-[10px] text-txt-muted">GNFA equation reduction</div>
+                  <div className="font-medium text-txt-primary text-xs">Hopcroft DFA Minimization</div>
+                  <div className="text-[10px] text-txt-muted">
+                    {machineType === 'DFA' ? 'State equivalence partition' : 'Requires DFA mode'}
+                  </div>
                 </div>
               </button>
             </div>
@@ -391,6 +423,17 @@ export const SidebarExplorer: React.FC = () => {
         </div>
         <p className="text-[11px] text-txt-muted">Unified Computational Laboratory Workspace Active.</p>
       </div>
+
+      <RegexModal
+        isOpen={isRegexModalOpen}
+        onClose={() => setIsRegexModalOpen(false)}
+        onGenerate={(newNodes, newEdges, regexResult, inputRegex) => {
+          replaceMachine(newNodes, newEdges, 'NFA');
+          setLastRegexResult({ inputRegex, result: regexResult });
+          expandPanel('inspector');
+          setActiveInspectorTab('explanation');
+        }}
+      />
     </div>
   );
 };

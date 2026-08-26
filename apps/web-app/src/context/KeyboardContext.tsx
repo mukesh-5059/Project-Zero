@@ -97,8 +97,13 @@ export const KeyboardProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const key = e.key.toLowerCase();
         switch (key) {
           case 'v':
-            setTool('select');
-            setLastShortcutPressed('V');
+            if (e.shiftKey) {
+              setTool('box');
+              setLastShortcutPressed('Shift+V');
+            } else {
+              setTool('select');
+              setLastShortcutPressed('V');
+            }
             return;
           case 's':
             setTool('add-state');

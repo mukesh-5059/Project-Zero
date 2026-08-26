@@ -61,7 +61,11 @@ export class ToolController {
     const key = event.key.toLowerCase();
     switch (key) {
       case 'v':
-        this.setTool('select');
+        if (event.shiftKey) {
+          this.setTool('box');
+        } else {
+          this.setTool('select');
+        }
         return true;
       case 's':
         this.setTool('add-state');

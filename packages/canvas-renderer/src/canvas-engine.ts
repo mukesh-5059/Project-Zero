@@ -21,6 +21,7 @@ import { TransitionEdge } from './edge/edge-transition';
 import { getEdgeBoundingBox } from './edge/edge-geometry';
 import { SpatialIndex } from './spatial/spatial-index';
 import { InteractionEngine, InteractionEngineOptions } from './interaction/interaction-engine';
+import { InteractionState } from './interaction/interaction-state';
 import { createCanvasPointerEvent, CanvasPointerEvent } from './interaction/pointer-event';
 import { HitDispatcher } from './interaction/hit-dispatcher';
 import { SnapEngine, SnapEngineOptions } from './interaction/snap-engine';
@@ -925,6 +926,9 @@ export class CanvasEngine implements ICanvasEngine {
 
     this.snapEngine.clearGuides();
 
+    const previousState = this.interactionEngine.getState();
+    const currentTool = this.toolController.getTool();
+
     const spatialResult = this.spatialIndex.queryPoint(
       event.worldPoint,
       HitDispatcher.DEFAULT_EDGE_HIT_TOLERANCE + 40
@@ -938,6 +942,18 @@ export class CanvasEngine implements ICanvasEngine {
       spatialResult.nodes,
       spatialResult.edges
     );
+
+    // Single-use behavior for Box Select and Edge creation tools:
+    // Once marquee selection or edge creation gesture finishes, automatically switch back to 'select'!
+    if (
+      previousState === InteractionState.MarqueeSelection ||
+      currentTool === 'box' ||
+      previousState === InteractionState.CreatingEdge ||
+      currentTool === 'add-transition'
+    ) {
+      this.toolController.setTool('select');
+    }
+
     this.damageTracker.invalidateAll();
     this.invalidate();
     return handled;
