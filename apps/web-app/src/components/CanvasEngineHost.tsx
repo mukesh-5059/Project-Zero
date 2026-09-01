@@ -3,7 +3,7 @@ import { CanvasEngine } from '@project-zero/canvas-renderer';
 import { useTheme } from '../context/ThemeContext';
 import { useGraph } from '../context/GraphContext';
 import { useExecution } from '../context/ExecutionContext';
-import { TransitionSymbolModal } from './TransitionSymbolModal';
+import { TransitionSymbolModal, ConfirmTransitionData } from './TransitionSymbolModal';
 
 /**
  * CanvasEngineHost — React integration layer between GraphContext / ThemeContext
@@ -24,6 +24,7 @@ export const CanvasEngineHost: React.FC = () => {
     nodes,
     edges,
     activeTool,
+    machineType,
     selectedNodeIds,
     selectedEdgeIds,
     addNode,
@@ -311,7 +312,6 @@ export const CanvasEngineHost: React.FC = () => {
       canvas.removeEventListener('dblclick', handleDblClick);
       canvas.removeEventListener('wheel', handleWheel);
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
       unsubSelect();
       unsubNodeMoved();
       unsubNodeDragEnd();
@@ -347,14 +347,20 @@ export const CanvasEngineHost: React.FC = () => {
   }, [edges]);
 
   // Handle modal confirmation
-  const handleConfirmTransition = (symbol: string) => {
+  const handleConfirmTransition = (data: ConfirmTransitionData) => {
     if (!pendingTransition) return;
     const newEdgeId = `edge_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     addEdge({
       id: newEdgeId,
       sourceNodeId: pendingTransition.sourceId,
       targetNodeId: pendingTransition.targetId,
-      label: symbol,
+      label: data.label,
+      inputSymbol: data.inputSymbol,
+      stackTop: data.stackTop,
+      stackReplacement: data.stackReplacement,
+      readSymbol: data.readSymbol,
+      writeSymbol: data.writeSymbol,
+      moveDirection: data.moveDirection,
     });
     setSelection([], [newEdgeId]);
     setPendingTransition(null);
@@ -383,6 +389,7 @@ export const CanvasEngineHost: React.FC = () => {
       {/* Transition Symbol Creation Dialog */}
       <TransitionSymbolModal
         isOpen={!!pendingTransition}
+        machineType={machineType}
         sourceLabel={pendingSourceNode ? pendingSourceNode.label : pendingTransition?.sourceId || ''}
         targetLabel={pendingTargetNode ? pendingTargetNode.label : pendingTransition?.targetId || ''}
         onConfirm={handleConfirmTransition}
@@ -391,5 +398,3 @@ export const CanvasEngineHost: React.FC = () => {
     </div>
   );
 };
-
-
