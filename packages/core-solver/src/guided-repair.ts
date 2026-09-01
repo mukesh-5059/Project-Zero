@@ -28,6 +28,27 @@ export function generateDiagnostics(
   const diagnostics: AutomataDiagnostic[] = [];
   const { nodes, edges } = graph;
 
+  const originalMachineType = machineType;
+  if (machineType === 'FA') {
+    let isNFA = edges.some(e => isEpsilonSymbol(e.label));
+    if (!isNFA) {
+      for (const node of nodes) {
+        const outgoing = edges.filter(e => e.sourceNodeId === node.id);
+        const symbols = new Set<string>();
+        for (const e of outgoing) {
+          const norm = normalizeSymbol(e.label);
+          if (norm && symbols.has(norm)) {
+            isNFA = true;
+            break;
+          }
+          if (norm) symbols.add(norm);
+        }
+        if (isNFA) break;
+      }
+    }
+    machineType = isNFA ? 'NFA' : 'DFA';
+  }
+
   // 1. Zero States (Empty Graph Q = ∅)
   if (nodes.length === 0) {
     const code: AutomataDiagnosticCode =
@@ -56,7 +77,7 @@ export function generateDiagnostics(
     });
 
     return {
-      machineType,
+      machineType: originalMachineType,
       isValid: false,
       diagnostics,
       errorCount: 1,
@@ -547,7 +568,7 @@ export function generateDiagnostics(
   const infoCount = diagnostics.filter((d) => d.severity === 'info').length;
 
   return {
-    machineType,
+    machineType: originalMachineType,
     isValid: errorCount === 0,
     diagnostics,
     errorCount,
