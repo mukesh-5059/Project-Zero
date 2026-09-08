@@ -5,7 +5,7 @@
   "description": "Project Zero: AI-Powered Interactive Learning Platform for Models of Computation",
   "scripts": {
     "build": "npx pnpm exec turbo run build",
-    "dev": "npx pnpm --filter @project-zero/web-app dev",
+    "dev": "npm --prefix apps/web-app run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
