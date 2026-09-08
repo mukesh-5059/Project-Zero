@@ -14,6 +14,8 @@ export const DEFAULT_DOCK_STATE: IDockState = {
   activeSidebarTab: 'explorer',
   activeBottomTab: 'trace',
   activeInspectorTab: 'workspace',
+  focusMode: false,
+  aiWorkspaceOpen: false,
 };
 
 export class LayoutManager {

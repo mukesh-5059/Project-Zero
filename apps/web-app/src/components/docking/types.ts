@@ -37,6 +37,8 @@ export interface IDockState {
   activeSidebarTab: 'explorer' | 'syllabus' | 'quizzes';
   activeBottomTab: BottomTabId;
   activeInspectorTab: 'inspect' | 'state' | 'transition' | 'workspace' | 'analysis' | 'diagnostics' | 'explanation';
+  focusMode?: boolean;
+  aiWorkspaceOpen?: boolean;
 }
 
 export interface IDockControls {
@@ -56,5 +58,11 @@ export interface IDockControls {
   setActiveSidebarTab: (tab: 'explorer' | 'syllabus' | 'quizzes') => void;
   setActiveBottomTab: (tab: BottomTabId) => void;
   setActiveInspectorTab: (tab: 'inspect' | 'state' | 'transition' | 'workspace' | 'analysis' | 'diagnostics' | 'explanation') => void;
+  toggleFocusMode: () => void;
+  enterFocusMode: () => void;
+  exitFocusMode: () => void;
+  openAIWorkspace: () => void;
+  closeAIWorkspace: () => void;
+  toggleAIWorkspace: () => void;
   resetLayout: () => void;
 }

@@ -124,9 +124,89 @@ export const DockProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLayout((prev) => ({ ...prev, activeInspectorTab, inspectorCollapsed: false, inspectorHidden: false }));
   }, []);
 
+  const [focusModeBackup, setFocusModeBackup] = useState<{
+    sidebarCollapsed: boolean;
+    inspectorCollapsed: boolean;
+    bottomPanelCollapsed: boolean;
+    sidebarHidden: boolean;
+    inspectorHidden: boolean;
+    bottomPanelHidden: boolean;
+  } | null>(null);
+
+  const enterFocusMode = useCallback(() => {
+    setLayout((prev) => {
+      if (prev.focusMode) return prev;
+      setFocusModeBackup({
+        sidebarCollapsed: prev.sidebarCollapsed,
+        inspectorCollapsed: prev.inspectorCollapsed,
+        bottomPanelCollapsed: prev.bottomPanelCollapsed,
+        sidebarHidden: prev.sidebarHidden,
+        inspectorHidden: prev.inspectorHidden,
+        bottomPanelHidden: prev.bottomPanelHidden,
+      });
+      return {
+        ...prev,
+        focusMode: true,
+        sidebarCollapsed: true,
+        inspectorCollapsed: true,
+        bottomPanelCollapsed: true,
+      };
+    });
+  }, []);
+
+  const exitFocusMode = useCallback(() => {
+    setLayout((prev) => {
+      if (!prev.focusMode) return prev;
+      return {
+        ...prev,
+        focusMode: false,
+        sidebarCollapsed: focusModeBackup ? focusModeBackup.sidebarCollapsed : false,
+        inspectorCollapsed: focusModeBackup ? focusModeBackup.inspectorCollapsed : false,
+        bottomPanelCollapsed: focusModeBackup ? focusModeBackup.bottomPanelCollapsed : false,
+        sidebarHidden: focusModeBackup ? focusModeBackup.sidebarHidden : false,
+        inspectorHidden: focusModeBackup ? focusModeBackup.inspectorHidden : false,
+        bottomPanelHidden: focusModeBackup ? focusModeBackup.bottomPanelHidden : false,
+      };
+    });
+  }, [focusModeBackup]);
+
+  const toggleFocusMode = useCallback(() => {
+    if (layout.focusMode) {
+      exitFocusMode();
+    } else {
+      enterFocusMode();
+    }
+  }, [layout.focusMode, enterFocusMode, exitFocusMode]);
+
+  const openAIWorkspace = useCallback(() => {
+    setLayout((prev) => ({
+      ...prev,
+      aiWorkspaceOpen: true,
+      inspectorCollapsed: false,
+      inspectorHidden: false,
+    }));
+  }, []);
+
+  const closeAIWorkspace = useCallback(() => {
+    setLayout((prev) => ({
+      ...prev,
+      aiWorkspaceOpen: false,
+    }));
+  }, []);
+
+  const toggleAIWorkspace = useCallback(() => {
+    setLayout((prev) => ({
+      ...prev,
+      aiWorkspaceOpen: !prev.aiWorkspaceOpen,
+      inspectorCollapsed: prev.aiWorkspaceOpen ? prev.inspectorCollapsed : false,
+      inspectorHidden: prev.aiWorkspaceOpen ? prev.inspectorHidden : false,
+    }));
+  }, []);
+
   const resetLayout = useCallback(() => {
     const defaults = LayoutManager.getDefaultLayout();
     setLayout(defaults);
+    setFocusModeBackup(null);
     LayoutPersistence.clear();
   }, []);
 
@@ -150,6 +230,12 @@ export const DockProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActiveSidebarTab,
         setActiveBottomTab,
         setActiveInspectorTab,
+        toggleFocusMode,
+        enterFocusMode,
+        exitFocusMode,
+        openAIWorkspace,
+        closeAIWorkspace,
+        toggleAIWorkspace,
         resetLayout,
       }}
     >
