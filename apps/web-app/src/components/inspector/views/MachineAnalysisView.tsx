@@ -143,7 +143,7 @@ export const MachineAnalysisView: React.FC = () => {
         </div>
       )}
 
-      {/* AI Pedagogical Explanation Section */}
+      {/* AI Pedagogical Explanation Section (commented out for later)
       <div className="border-t border-border-subtle pt-2.5 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1 text-txt-primary font-bold text-[11px]">
@@ -176,6 +176,7 @@ export const MachineAnalysisView: React.FC = () => {
           </div>
         )}
       </div>
+      */}
     </div>
   );
 };

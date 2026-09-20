@@ -119,7 +119,7 @@ export class NvidiaProvider {
       }
 
       if (isLatest && profile.requiresStructuredActions) {
-        const actionPromptSuffix = '\n\n[MANDATORY FORMAT: Begin your response directly with the structured JSON block:\n```json:project-zero-actions\n{\n  "version": "1.0.0",\n  "summary": "Brief summary of construction/modifications",\n  "actions": [\n    ...\n  ]\n}\n```\nFollowed by your concise educational explanation of states and suffixes.]';
+        const actionPromptSuffix = '\n\n[MANDATORY FORMAT: Begin your response directly with the structured JSON block:\n```json:project-zero-actions\n{\n  "type": "DFA",\n  "states": ["q0", "q1", ...],\n  "start": "q0",\n  "final": ["q..."],\n  "transitions": [\n    { "from": "q0", "symbol": "0", "to": "q1" }\n  ]\n}\n```\nAlways explicitly declare all final/accepting states in "final". Followed by your concise educational explanation of states and suffixes.]';
         if (content.length + actionPromptSuffix.length <= 4000) {
           content = `${content}${actionPromptSuffix}`;
         }

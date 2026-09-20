@@ -115,7 +115,7 @@ describe('Phase 8 — AI Chat Launcher & Right Inspector Preservation', () => {
   });
 
   describe('Command Palette Integration', () => {
-    it('7. contains ai-open-assistant command in Workspace category', () => {
+    it.skip('7. contains ai-open-assistant command in Workspace category (skipped while AI feature is disabled)', () => {
       const cmd = COMMAND_REGISTRY.find((c) => c.id === 'ai-open-assistant');
       expect(cmd).toBeDefined();
       expect(cmd?.category).toBe('Workspace');

@@ -533,5 +533,64 @@ describe('Phase 9, 10 & 11 — NVIDIA Nemotron AI Gateway & AI Tutor', () => {
       expect(body.actionProposal?.actions.length).toBe(7);
       expect(body.routingInfo?.taskCategory).toBe('AUTOMATON_CONSTRUCTION');
     });
+
+    it('24. normalizes declarative 5-tuple automaton (states, start, final, transitions) and correctly sets final states', async () => {
+      const declarativeContent = `Here is your DFA:
+
+\`\`\`json:project-zero-actions
+{
+  "type": "DFA",
+  "summary": "Even number of a's DFA",
+  "states": ["q0", "q1"],
+  "start": "q0",
+  "final": ["q0"],
+  "transitions": [
+    { "from": "q0", "symbol": "a", "to": "q1" },
+    { "from": "q0", "symbol": "b", "to": "q0" },
+    { "from": "q1", "symbol": "a", "to": "q0" },
+    { "from": "q1", "symbol": "b", "to": "q1" }
+  ]
+}
+\`\`\`
+This automaton accepts even number of a's.`;
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: declarativeContent,
+              },
+            },
+          ],
+        }),
+      });
+
+      const provider = new NvidiaProvider({
+        apiKey: 'nvapi-mock-token',
+        fetchFn: mockFetch as unknown as typeof fetch,
+      });
+
+      const res = await provider.chat({
+        messages: [{ role: 'user', content: 'Construct a DFA for even a\'s' }],
+      });
+
+      expect(res.actionProposal).toBeDefined();
+      const actions = res.actionProposal!.actions;
+      expect(actions.length).toBe(6); // 2 states + 4 transitions
+
+      const q0 = actions.find((a) => a.type === 'CREATE_STATE' && a.parameters.label === 'q0');
+      const q1 = actions.find((a) => a.type === 'CREATE_STATE' && a.parameters.label === 'q1');
+
+      expect(q0).toBeDefined();
+      expect(q0?.parameters.isInitial).toBe(true);
+      expect(q0?.parameters.isAccepting).toBe(true);
+
+      expect(q1).toBeDefined();
+      expect(q1?.parameters.isInitial).toBe(false);
+      expect(q1?.parameters.isAccepting).toBe(false);
+    });
   });
 });

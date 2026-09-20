@@ -150,12 +150,12 @@ export const COMMAND_REGISTRY: ICommand[] = [
     keywords: ['analyze', 'completeness', 'validation', 'telemetry'],
   },
 
+  /* AI commands commented out for later
   {
     id: 'ai-open-assistant',
     title: 'Open Theoretical AI Assistant Workspace',
     category: 'Workspace',
     icon: Bot,
-    description: 'Open dedicated AI Assistant workspace surface in right panel',
     keywords: ['ai', 'assistant', 'tutor', 'guidance', 'chat', 'proofs'],
   },
   {
@@ -172,4 +172,5 @@ export const COMMAND_REGISTRY: ICommand[] = [
     icon: HelpCircle,
     keywords: ['ai', 'explain', 'trace', 'reasoning'],
   },
+  */
 ];

@@ -133,11 +133,12 @@ export const RightInspector: React.FC = () => {
       style={{ width: `${inspectorWidth}px` }}
       className="bg-bg-surface1 border-l border-border-subtle flex flex-col select-none z-10 shrink-0 transition-all duration-150"
     >
-      {/* 1. Top AI Assistant Launcher Header Strip */}
+      {/* 1. Top Inspector Header Strip (AI Assistant launcher disabled for now) */}
       <div className="px-2.5 py-1.5 bg-bg-surface2/70 border-b border-border-subtle flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-1.5 text-[11px] font-medium text-txt-muted">
           <span className="font-semibold text-txt-primary">Inspector</span>
         </div>
+        {/* AI Assistant button commented out for later
         <button
           type="button"
           onClick={openAIWorkspace}
@@ -149,12 +150,13 @@ export const RightInspector: React.FC = () => {
           <span>AI Assistant</span>
           <span className="w-1.5 h-1.5 rounded-full bg-accent-purple animate-pulse" />
         </button>
+        */}
       </div>
 
-      {/* 2. Dedicated AI Chat Workspace Surface (if open) OR Normal Inspector */}
-      {aiWorkspaceOpen ? (
+      {/* 2. Normal Inspector (Dedicated AI Chat Workspace disabled for now) */}
+      {/* {aiWorkspaceOpen ? (
         <AIChatWorkspace onClose={closeAIWorkspace} />
-      ) : (
+      ) : ( */}
         <>
           {/* Inspector View Switcher Tab Strip */}
           <div className="flex border-b border-border-subtle bg-bg-surface2/50 text-[11px] overflow-x-auto overflow-y-hidden shrink-0">
@@ -233,7 +235,7 @@ export const RightInspector: React.FC = () => {
             {currentTab === 'explanation' && <MinimizationExplanationView />}
           </div>
         </>
-      )}
+      {/* )} */}
     </aside>
   );
 };

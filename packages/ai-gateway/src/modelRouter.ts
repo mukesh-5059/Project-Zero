@@ -236,9 +236,9 @@ export function selectModel(request: ChatRequest, options?: { excludeModelId?: s
 
   if (enabledModels.length === 0) {
     // If all excluded or none enabled, fallback to primary default if exists
-    const defaultModel = getRegisteredModel('nvidia/nemotron-3-super-120b-a12b') || getRegisteredModel('nvidia/nemotron-3-ultra-550b-a55b');
+    const defaultModel = getRegisteredModel('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning') || getRegisteredModel('nvidia/nemotron-3-super-120b-a12b') || getRegisteredModel('nvidia/nemotron-3-ultra-550b-a55b');
     return {
-      selectedModel: defaultModel ? defaultModel.id : 'nvidia/nemotron-3-super-120b-a12b',
+      selectedModel: defaultModel ? defaultModel.id : 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
       taskProfile,
       routingReason: 'Emergency fallback: no enabled models available in registry filter.',
       calculatedScores: {},

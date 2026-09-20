@@ -20,7 +20,7 @@ describe('Phase 14A — Intelligent Server-Side NVIDIA Model Router', () => {
     };
 
     const decision = selectModel(req);
-    expect(decision.selectedModel).toBe('nvidia/nemotron-3-super-120b-a12b');
+    expect(decision.selectedModel).toBe('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning');
     expect(decision.taskProfile.category).toBe('SIMPLE_EXPLANATION');
     expect(decision.taskProfile.reasoningComplexity).toBe('LOW');
     expect(decision.taskProfile.requiresStructuredActions).toBe(false);
@@ -54,7 +54,7 @@ describe('Phase 14A — Intelligent Server-Side NVIDIA Model Router', () => {
     };
 
     const decision = selectModel(req);
-    expect(decision.selectedModel).toBe('nvidia/nemotron-3-super-120b-a12b');
+    expect(decision.selectedModel).toBe('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning');
     expect(decision.taskProfile.category).toBe('EDUCATIONAL_REASONING');
     expect(decision.taskProfile.reasoningComplexity).toBe('MEDIUM');
   });
@@ -83,7 +83,7 @@ describe('Phase 14A — Intelligent Server-Side NVIDIA Model Router', () => {
     };
 
     const decision = selectModel(req);
-    expect(decision.selectedModel).toBe('nvidia/nemotron-3-super-120b-a12b');
+    expect(decision.selectedModel).toBe('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning');
     expect(decision.taskProfile.category).toBe('AUTOMATON_CONSTRUCTION');
     expect(decision.taskProfile.requiresStructuredActions).toBe(true);
     expect(decision.taskProfile.requiresGraphConstruction).toBe(true);
@@ -113,7 +113,7 @@ describe('Phase 14A — Intelligent Server-Side NVIDIA Model Router', () => {
     };
 
     const decision = selectModel(req);
-    expect(decision.selectedModel).toBe('nvidia/nemotron-3-super-120b-a12b');
+    expect(decision.selectedModel).toBe('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning');
     expect(decision.taskProfile.category).toBe('GRAPH_EDITING');
     expect(decision.taskProfile.requiresStructuredActions).toBe(true);
     expect(decision.taskProfile.requiresGraphEditing).toBe(true);
@@ -181,9 +181,9 @@ describe('Phase 14A — Intelligent Server-Side NVIDIA Model Router', () => {
 
     expect(response.status).toBe(200);
     const body = response.body as ChatResponse;
-    // Verified: the router chose Super 120b, NOT the malicious client model
-    expect(body.model).toBe('nvidia/nemotron-3-super-120b-a12b');
-    expect(body.routingInfo?.selectedModel).toBe('nvidia/nemotron-3-super-120b-a12b');
+    // Verified: the router chose Nano Omni 30b, NOT the malicious client model
+    expect(body.model).toBe('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning');
+    expect(body.routingInfo?.selectedModel).toBe('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning');
   });
 
   // --------------------------------------------------------------------------
@@ -225,8 +225,8 @@ describe('Phase 14A — Intelligent Server-Side NVIDIA Model Router', () => {
       const body = JSON.parse(opts?.body as string);
 
       if (callCount === 1) {
-        // Primary attempt (Super 120b) fails with 503 upstream error
-        expect(body.model).toBe('nvidia/nemotron-3-super-120b-a12b');
+        // Primary attempt (Nano Omni 30b) fails with 503 upstream error
+        expect(body.model).toBe('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning');
         return {
           ok: false,
           status: 503,
@@ -349,7 +349,7 @@ describe('Phase 14A — Intelligent Server-Side NVIDIA Model Router', () => {
       messages: [{ role: 'user', content: prompt }],
     });
 
-    expect(decision.selectedModel).toBe('nvidia/nemotron-3-super-120b-a12b');
+    expect(decision.selectedModel).toBe('nvidia/nemotron-3-nano-omni-30b-a3b-reasoning');
     expect(decision.taskProfile.category).toBe('AUTOMATON_CONSTRUCTION');
     expect(decision.taskProfile.requiresStructuredActions).toBe(true);
     expect(decision.taskProfile.requiresGraphConstruction).toBe(true);

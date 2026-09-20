@@ -51,7 +51,7 @@ Rules:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'nvidia/nemotron-3-ultra-550b-a55b',
+        model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 300,
         temperature: 0.2,

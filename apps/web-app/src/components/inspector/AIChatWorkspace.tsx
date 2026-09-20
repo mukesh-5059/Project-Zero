@@ -27,8 +27,28 @@ interface AIChatWorkspaceProps {
   onClose: () => void;
 }
 
+const AI_CHAT_STORAGE_KEY = 'project_zero_ai_chat_history';
+
+function loadPersistedMessages(): ChatMessage[] {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return [];
+  }
+  try {
+    const saved = localStorage.getItem(AI_CHAT_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+  return [];
+}
+
 export const AIChatWorkspace: React.FC<AIChatWorkspaceProps> = ({ onClose }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(loadPersistedMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +94,19 @@ export const AIChatWorkspace: React.FC<AIChatWorkspaceProps> = ({ onClose }) => 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading, error, pendingActionEnvelope, actionSuccessBanner]);
+
+  // Persist messages to localStorage
+  useEffect(() => {
+    try {
+      if (messages.length > 0) {
+        localStorage.setItem(AI_CHAT_STORAGE_KEY, JSON.stringify(messages));
+      } else {
+        localStorage.removeItem(AI_CHAT_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [messages]);
 
   // Focus input on mount
   useEffect(() => {
@@ -182,6 +215,11 @@ export const AIChatWorkspace: React.FC<AIChatWorkspaceProps> = ({ onClose }) => 
       abortControllerRef.current.abort();
     }
     setMessages([]);
+    try {
+      localStorage.removeItem(AI_CHAT_STORAGE_KEY);
+    } catch {
+      // Ignore
+    }
     setError(null);
     setPendingActionEnvelope(null);
     setActionSuccessBanner(null);
