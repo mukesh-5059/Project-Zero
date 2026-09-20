@@ -13,6 +13,10 @@ import { RenderLayer } from '../layer/layer-manager';
 import { Camera } from '../camera/camera';
 import { CanvasThemeTokens, DARK_THEME_TOKENS } from '../theme/theme-bridge';
 import { normalizeMarqueeRect } from './selection-geometry';
+import { TransitionEdge } from '../edge/edge-transition';
+import { StateRenderer } from '../state/state-renderer';
+import { EdgeRenderer } from '../edge/edge-renderer';
+import { getEdgeBoundingBox, evaluateCubicBezierPoint } from '../edge/edge-geometry';
 
 export enum MarqueeContainmentMode {
   BoundingBoxIntersection = 'BoundingBoxIntersection',
@@ -26,6 +30,7 @@ export interface MarqueeControllerOptions {
 export class MarqueeController {
   private readonly containmentMode: MarqueeContainmentMode;
   private readonly initialSelectedNodeIds: Set<string> = new Set<string>();
+  private readonly initialSelectedEdgeIds: Set<string> = new Set<string>();
 
   constructor(options?: MarqueeControllerOptions) {
     this.containmentMode = options?.containmentMode ?? MarqueeContainmentMode.BoundingBoxIntersection;
@@ -49,9 +54,13 @@ export class MarqueeController {
     );
 
     this.initialSelectedNodeIds.clear();
+    this.initialSelectedEdgeIds.clear();
     if (isAdditive) {
       for (const id of context.selectedNodeIds) {
         this.initialSelectedNodeIds.add(id);
+      }
+      for (const id of context.selectedEdgeIds) {
+        this.initialSelectedEdgeIds.add(id);
       }
     }
   }
@@ -60,7 +69,10 @@ export class MarqueeController {
     context: InteractionContext,
     currentWorldPoint: Point2D,
     stateNodes: ReadonlyArray<StateNode>,
-    isAdditive: boolean = false
+    isAdditive: boolean = false,
+    edges?: ReadonlyArray<TransitionEdge>,
+    stateRenderer?: StateRenderer,
+    edgeRenderer?: EdgeRenderer
   ): boolean {
     if (!context.dragOriginWorld) return false;
 
@@ -78,6 +90,9 @@ export class MarqueeController {
     if (isAdditive) {
       for (const id of this.initialSelectedNodeIds) {
         context.selectedNodeIds.add(id);
+      }
+      for (const id of this.initialSelectedEdgeIds) {
+        context.selectedEdgeIds.add(id);
       }
     }
 
@@ -100,6 +115,41 @@ export class MarqueeController {
       }
     }
 
+    if (edges && stateRenderer && edgeRenderer) {
+      for (let i = 0; i < edges.length; i++) {
+        const edge = edges[i];
+        const geom = edgeRenderer.computeGeometry(edge, stateRenderer);
+        if (!geom) continue;
+
+        const edgeBounds = getEdgeBoundingBox(geom, edge.label);
+        if (!intersectsBoundingBox(edgeBounds, marqueeRect)) {
+          continue;
+        }
+
+        let edgeMatched =
+          containsPoint(marqueeRect, geom.curve.start) ||
+          containsPoint(marqueeRect, geom.curve.end) ||
+          containsPoint(marqueeRect, geom.arrowheadTip) ||
+          containsPoint(marqueeRect, geom.labelAnchor);
+
+        if (!edgeMatched) {
+          const steps = 8;
+          for (let s = 1; s < steps; s++) {
+            const pt = evaluateCubicBezierPoint(geom.curve, s / steps);
+            if (containsPoint(marqueeRect, pt)) {
+              edgeMatched = true;
+              break;
+            }
+          }
+        }
+
+        if (edgeMatched) {
+          context.selectedEdgeIds.add(edge.id);
+          selectedAny = true;
+        }
+      }
+    }
+
     return selectedAny;
   }
 
@@ -107,6 +157,7 @@ export class MarqueeController {
     context.dragOriginWorld = null;
     context.marqueeRect = null;
     this.initialSelectedNodeIds.clear();
+    this.initialSelectedEdgeIds.clear();
   }
 
   public enqueueDrawCommands(

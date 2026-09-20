@@ -13,6 +13,7 @@ import {
   generateTransformationProof,
   LanguageOperationType,
   ProductAutomatonResult,
+  expandSolverEdges,
 } from '@project-zero/core-solver';
 import { StateNode, TransitionEdge } from '@project-zero/canvas-renderer';
 import {
@@ -106,7 +107,7 @@ export const AnalysisPanelTab: React.FC = () => {
     if (activeMode !== 'TRANSFORM' && activeMode !== 'PROOF') return null;
 
     if (selectedOp === 'NFA_TO_DFA') {
-      const conv = convertNfaToDfa({ nodes, edges });
+      const conv = convertNfaToDfa({ nodes, edges: expandSolverEdges(edges, 'FA') });
       if (!conv.success) {
         return {
           success: false,
@@ -131,7 +132,7 @@ export const AnalysisPanelTab: React.FC = () => {
     }
 
     if (selectedOp === 'DFA_MINIMIZE') {
-      const min = minimizeDFA({ nodes, edges });
+      const min = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
       if (!min.success) {
         return {
           success: false,

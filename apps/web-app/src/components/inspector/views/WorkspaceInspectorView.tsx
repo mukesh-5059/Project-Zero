@@ -5,7 +5,7 @@ import { useWorkspace } from '../../../context/WorkspaceContext';
 import { IInspectorSchema } from '../types';
 import { InspectorSchemaRenderer } from '../InspectorSchemaRenderer';
 import { AutomatonType } from '@project-zero/shared';
-import { convertNfaToDfa, minimizeDFA } from '@project-zero/core-solver';
+import { convertNfaToDfa, minimizeDFA, isFA_NFA, expandSolverEdges } from '@project-zero/core-solver';
 import { RegexModal } from '../../modals/RegexModal';
 import { Code, RefreshCw, Zap, Wand2 } from 'lucide-react';
 
@@ -43,16 +43,7 @@ export const WorkspaceInspectorView: React.FC = () => {
 
   const isGraphNFA = useMemo(() => {
     if (!isStructurallyValidFA) return false;
-    if (edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '')) return true;
-    for (const node of nodes) {
-      const seen = new Set<string>();
-      for (const e of edges.filter((edge) => edge.sourceNodeId === node.id)) {
-        const sym = e.label.trim();
-        if (seen.has(sym)) return true;
-        seen.add(sym);
-      }
-    }
-    return false;
+    return isFA_NFA(nodes, edges);
   }, [nodes, edges, isStructurallyValidFA]);
 
   const isGraphDFA = useMemo(() => {
@@ -61,14 +52,14 @@ export const WorkspaceInspectorView: React.FC = () => {
   }, [isStructurallyValidFA, isGraphNFA]);
 
   const handleNfaToDfaConversion = () => {
-    const res = convertNfaToDfa({ nodes, edges });
+    const res = convertNfaToDfa({ nodes, edges: expandSolverEdges(edges, 'FA') });
     if (res.success && res.nodes.length > 0) {
       replaceMachine([...res.nodes], [...res.edges], 'FA');
     }
   };
 
   const handleDfaMinimization = () => {
-    const res = minimizeDFA({ nodes, edges });
+    const res = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
       replaceMachine([...res.nodes], [...res.edges], 'FA');

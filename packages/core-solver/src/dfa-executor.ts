@@ -7,6 +7,7 @@ import {
 } from './types';
 import { validateDFA } from './dfa-validator';
 import { tokenizeInputStringStrict } from './tokenization';
+import { expandSolverEdges } from './automaton-adapter';
 
 /**
  * Executes a deterministic finite automaton (DFA) on a given input string.
@@ -196,7 +197,8 @@ export function executeDFA(graph: SolverGraphInput, inputString: string): DFAExe
  * Computes a deterministic transition matrix (δ: Q × Σ → Q) for the given graph.
  */
 export function computeTransitionMatrix(graph: SolverGraphInput): DFATransitionMatrix {
-  const rawSymbols = graph.edges
+  const expandedEdges = expandSolverEdges(graph.edges, 'FA');
+  const rawSymbols = expandedEdges
     .map((e) => e.label)
     .filter((l) => l && l.trim().length > 0 && l !== 'ε' && l !== 'λ');
   const symbols = Array.from(new Set(rawSymbols)).sort();
@@ -209,7 +211,7 @@ export function computeTransitionMatrix(graph: SolverGraphInput): DFATransitionM
     const ambiguityMap: Record<string, boolean> = {};
 
     for (const sym of symbols) {
-      const matches = graph.edges.filter(
+      const matches = expandedEdges.filter(
         (e) => e.sourceNodeId === node.id && e.label === sym
       );
 

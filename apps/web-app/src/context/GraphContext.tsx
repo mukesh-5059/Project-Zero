@@ -64,24 +64,72 @@ function recomputeParallelIndices(edges: TransitionEdge[]): TransitionEdge[] {
   const result: TransitionEdge[] = [];
 
   for (const group of pairGroups.values()) {
-    if (group.length === 1) {
-      const edge = group[0];
-      const isSelfLoop = edge.sourceNodeId === edge.targetNodeId;
-      result.push(isSelfLoop ? { ...edge, isSelfLoop: true } : { ...edge, parallelIndex: 0 });
-    } else {
+    if (group.length === 0) continue;
+
+    const first = group[0];
+    const isSelfLoop = first.sourceNodeId === first.targetNodeId;
+
+    if (isSelfLoop) {
       group.forEach((edge, idx) => {
-        let parallelIndex = 0;
-        if (idx > 0) {
-          const step = Math.ceil(idx / 2);
-          parallelIndex = idx % 2 === 1 ? step : -step;
-        }
-        const isSelfLoop = edge.sourceNodeId === edge.targetNodeId;
         result.push({
           ...edge,
-          parallelIndex,
-          isSelfLoop,
+          parallelIndex: idx,
+          isSelfLoop: true,
         });
       });
+      continue;
+    }
+
+    // Two distinct states: separate into forward and backward directed lists
+    const baseSourceId = first.sourceNodeId;
+    const baseTargetId = first.targetNodeId;
+    const forwardEdges = group.filter(
+      (e) => e.sourceNodeId === baseSourceId && e.targetNodeId === baseTargetId
+    );
+    const backwardEdges = group.filter(
+      (e) => e.sourceNodeId === baseTargetId && e.targetNodeId === baseSourceId
+    );
+
+    const hasOpposing = forwardEdges.length > 0 && backwardEdges.length > 0;
+
+    if (hasOpposing) {
+      // Opposing edges both curve away from each other cleanly (each to its own right)
+      forwardEdges.forEach((edge, idx) => {
+        result.push({
+          ...edge,
+          parallelIndex: idx + 1,
+          isSelfLoop: false,
+        });
+      });
+      backwardEdges.forEach((edge, idx) => {
+        result.push({
+          ...edge,
+          parallelIndex: idx + 1,
+          isSelfLoop: false,
+        });
+      });
+    } else {
+      // Unidirectional edges
+      if (group.length === 1) {
+        result.push({
+          ...group[0],
+          parallelIndex: 0,
+          isSelfLoop: false,
+        });
+      } else {
+        group.forEach((edge, idx) => {
+          let parallelIndex = 0;
+          if (idx > 0) {
+            const step = Math.ceil(idx / 2);
+            parallelIndex = idx % 2 === 1 ? step : -step;
+          }
+          result.push({
+            ...edge,
+            parallelIndex,
+            isSelfLoop: false,
+          });
+        });
+      }
     }
   }
 

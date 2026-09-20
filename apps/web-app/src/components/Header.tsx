@@ -5,6 +5,7 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import { useGraph } from '../context/GraphContext';
 import { Command, Moon, Sun, Monitor, Save, HelpCircle, Settings, Sidebar, PanelRight } from 'lucide-react';
 import { AutomatonType } from '@project-zero/shared';
+import { classifyFA } from '@project-zero/core-solver';
 
 export const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -17,18 +18,7 @@ export const Header: React.FC = () => {
   // Dynamically evaluate whether an FA is currently DFA or NFA
   const faSubtype = React.useMemo(() => {
     if (machineType !== 'FA' && machineType !== 'DFA' && machineType !== 'NFA') return null;
-    const hasEpsilon = edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '');
-    if (hasEpsilon) return 'NFA';
-
-    for (const node of nodes) {
-      const seen = new Set<string>();
-      for (const e of edges.filter((edge) => edge.sourceNodeId === node.id)) {
-        const sym = e.label.trim();
-        if (seen.has(sym)) return 'NFA';
-        seen.add(sym);
-      }
-    }
-    return 'DFA';
+    return classifyFA(nodes, edges);
   }, [nodes, edges, machineType]);
 
   return (

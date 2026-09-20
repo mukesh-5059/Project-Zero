@@ -2,6 +2,7 @@ import { SolverGraphInput, NFAConversionResult, NFAConversionSubsetMap } from '.
 import { validateNFA, normalizeSymbol, isEpsilonSymbol } from './nfa-validator';
 import { epsilonClosure, nfaMove } from './nfa-executor';
 import { StateNode, TransitionEdge } from '@project-zero/canvas-renderer';
+import { expandSolverEdges } from './automaton-adapter';
 
 /**
  * Pure function: Computes canonical subset key string from NFA state nodes.
@@ -27,7 +28,11 @@ export function getCanonicalSubsetLabel(states: ReadonlyArray<StateNode>): strin
  * Pure function: Converts a valid NFA into an equivalent deterministic DFA using standard Subset Construction.
  */
 export function convertNfaToDfa(graph: SolverGraphInput): NFAConversionResult {
-  const validationResult = validateNFA(graph);
+  const canonicalGraph: SolverGraphInput = {
+    nodes: graph.nodes,
+    edges: expandSolverEdges(graph.edges, 'FA'),
+  };
+  const validationResult = validateNFA(canonicalGraph);
   if (!validationResult.isValid) {
     return {
       success: false,
@@ -40,7 +45,7 @@ export function convertNfaToDfa(graph: SolverGraphInput): NFAConversionResult {
     };
   }
 
-  const initialNfaNode = graph.nodes.find((n) => n.isInitial);
+  const initialNfaNode = canonicalGraph.nodes.find((n) => n.isInitial);
   if (!initialNfaNode) {
     return {
       success: false,
@@ -54,13 +59,13 @@ export function convertNfaToDfa(graph: SolverGraphInput): NFAConversionResult {
   }
 
   // Derive DFA alphabet (exclude ε / λ symbols)
-  const rawSymbols = graph.edges
+  const rawSymbols = canonicalGraph.edges
     .map((e) => normalizeSymbol(e.label))
     .filter((l) => l.length > 0 && !isEpsilonSymbol(l));
   const alphabet = Array.from(new Set(rawSymbols)).sort();
 
   // 1. Compute initial subset: ε-closure({q0})
-  const initialSubsetNodes = epsilonClosure([initialNfaNode.id], graph);
+  const initialSubsetNodes = epsilonClosure([initialNfaNode.id], canonicalGraph);
 
   // Map key -> generated DFA node info
   const subsetMap = new Map<
@@ -113,10 +118,10 @@ export function convertNfaToDfa(graph: SolverGraphInput): NFAConversionResult {
     const currentInfo = subsetMap.get(currentKey)!;
 
     for (const symbol of alphabet) {
-      const movedNodes = nfaMove(currentInfo.nodes, symbol, graph);
+      const movedNodes = nfaMove(currentInfo.nodes, symbol, canonicalGraph);
       const targetSubsetNodes = epsilonClosure(
         movedNodes.map((n) => n.id),
-        graph
+        canonicalGraph
       );
       const targetKey = getCanonicalSubsetKey(targetSubsetNodes);
       const isAlreadyKnown = subsetMap.has(targetKey);

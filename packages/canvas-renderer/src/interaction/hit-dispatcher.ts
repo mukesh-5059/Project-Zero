@@ -117,7 +117,7 @@ export class HitDispatcher {
 
       let geometry: EdgePathGeometry;
       if (edge.isSelfLoop || edge.sourceNodeId === edge.targetNodeId) {
-        geometry = computeSelfLoopGeometry(source, sourceRadius);
+        geometry = computeSelfLoopGeometry(source, sourceRadius, edge.parallelIndex);
       } else if (edge.parallelIndex && edge.parallelIndex !== 0) {
         geometry = computeCurvedEdgeGeometry(
           source,

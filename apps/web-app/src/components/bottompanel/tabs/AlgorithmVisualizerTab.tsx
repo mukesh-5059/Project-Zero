@@ -5,6 +5,7 @@ import {
   minimizeDFAWithTrace,
   NFAConversionStep,
   DFAMinimizationStep,
+  expandSolverEdges,
 } from '@project-zero/core-solver';
 import {
   ChevronLeft,
@@ -24,14 +25,14 @@ export const AlgorithmVisualizerTab: React.FC = () => {
   // Compute derivation trace on-the-fly from the mathematical core-solver
   const conversionTraceResult = useMemo(() => {
     if (machineType === 'NFA') {
-      return convertNfaToDfaWithTrace({ nodes, edges });
+      return convertNfaToDfaWithTrace({ nodes, edges: expandSolverEdges(edges, 'FA') });
     }
     return null;
   }, [nodes, edges, machineType]);
 
   const minimizationTraceResult = useMemo(() => {
     if (machineType === 'DFA') {
-      return minimizeDFAWithTrace({ nodes, edges });
+      return minimizeDFAWithTrace({ nodes, edges: expandSolverEdges(edges, 'FA') });
     }
     return null;
   }, [nodes, edges, machineType]);

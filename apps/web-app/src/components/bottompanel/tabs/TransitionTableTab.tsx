@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import { useGraph } from '../../../context/GraphContext';
-import { computeTransitionMatrix } from '@project-zero/core-solver';
+import { computeTransitionMatrix, expandSolverEdges } from '@project-zero/core-solver';
 
 export const TransitionTableTab: React.FC = () => {
   const { nodes, edges, machineType } = useGraph();
 
   const matrix = useMemo(() => {
-    return computeTransitionMatrix({ nodes, edges });
-  }, [nodes, edges]);
+    return computeTransitionMatrix({ nodes, edges: expandSolverEdges(edges, machineType) });
+  }, [nodes, edges, machineType]);
 
   if (nodes.length === 0) {
     return (

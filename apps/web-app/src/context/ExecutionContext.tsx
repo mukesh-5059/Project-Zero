@@ -18,6 +18,8 @@ import {
   TMExecutionResult,
   TMExecutionStep,
   DFAValidationResult,
+  isFA_NFA,
+  expandSolverEdges,
 } from '@project-zero/core-solver';
 
 interface ExecutionContextValue {
@@ -53,46 +55,42 @@ export const ExecutionProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playSpeedMs, setPlaySpeedMs] = useState<number>(600);
 
+  // Preprocess edges for solver execution: expand comma-separated symbols (FA) or newline rules (PDA/TM)
+  const solverEdges = useMemo(() => {
+    return expandSolverEdges(edges, machineType);
+  }, [edges, machineType]);
+
   // Helper to dynamically detect whether an FA graph has NFA characteristics
   const isGraphNFA = useMemo(() => {
-    if (edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '')) return true;
-    for (const node of nodes) {
-      const seen = new Set<string>();
-      for (const e of edges.filter((edge) => edge.sourceNodeId === node.id)) {
-        const sym = e.label.trim();
-        if (seen.has(sym)) return true;
-        seen.add(sym);
-      }
-    }
-    return false;
+    return isFA_NFA(nodes, edges);
   }, [nodes, edges]);
 
   // Dynamically validate depending on active machineType ('FA', 'DFA', 'NFA', 'PDA', or 'TM')
   const validationResult = useMemo(() => {
     if (machineType === 'TM') {
-      return validateTM({ nodes, edges }, blankSymbol);
+      return validateTM({ nodes, edges: solverEdges }, blankSymbol);
     }
     if (machineType === 'PDA') {
-      return validatePDA({ nodes, edges }, initialStackSymbol);
+      return validatePDA({ nodes, edges: solverEdges }, initialStackSymbol);
     }
     if (machineType === 'NFA' || (machineType === 'FA' && isGraphNFA)) {
-      return validateNFA({ nodes, edges });
+      return validateNFA({ nodes, edges: solverEdges });
     }
-    return validateDFA({ nodes, edges });
-  }, [nodes, edges, machineType, initialStackSymbol, blankSymbol, isGraphNFA]);
+    return validateDFA({ nodes, edges: solverEdges });
+  }, [nodes, solverEdges, machineType, initialStackSymbol, blankSymbol, isGraphNFA]);
 
   const executionResult = useMemo(() => {
     if (machineType === 'TM') {
-      return executeTM({ nodes, edges }, inputString, { blankSymbol });
+      return executeTM({ nodes, edges: solverEdges }, inputString, { blankSymbol });
     }
     if (machineType === 'PDA') {
-      return executePDA({ nodes, edges }, inputString, { initialStackSymbol });
+      return executePDA({ nodes, edges: solverEdges }, inputString, { initialStackSymbol });
     }
     if (machineType === 'NFA' || (machineType === 'FA' && isGraphNFA)) {
-      return executeNFA({ nodes, edges }, inputString);
+      return executeNFA({ nodes, edges: solverEdges }, inputString);
     }
-    return executeDFA({ nodes, edges }, inputString);
-  }, [nodes, edges, machineType, inputString, initialStackSymbol, blankSymbol, isGraphNFA]);
+    return executeDFA({ nodes, edges: solverEdges }, inputString);
+  }, [nodes, solverEdges, machineType, inputString, initialStackSymbol, blankSymbol, isGraphNFA]);
 
   const steps = executionResult.steps;
 

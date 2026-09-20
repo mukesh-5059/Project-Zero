@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGraph } from '../../../context/GraphContext';
-import { minimizeDFA } from '@project-zero/core-solver';
+import { minimizeDFA, expandSolverEdges } from '@project-zero/core-solver';
 import { Cpu, Layers, CheckCircle2, AlertTriangle, HelpCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const MinimizationExplanationTab: React.FC = () => {
@@ -8,7 +8,7 @@ export const MinimizationExplanationTab: React.FC = () => {
 
   const handleRunMinimization = () => {
     if (machineType !== 'DFA') return;
-    const res = minimizeDFA({ nodes, edges });
+    const res = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
       replaceMachine([...res.nodes], [...res.edges], 'DFA');

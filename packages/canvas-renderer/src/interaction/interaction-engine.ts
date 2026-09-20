@@ -276,7 +276,10 @@ export class InteractionEngine {
           this.context,
           event.worldPoint,
           nodes,
-          isAdditive
+          isAdditive,
+          edgeRenderer.getEdges(),
+          stateRenderer,
+          edgeRenderer
         );
         if (invalidated) {
           this.emitSelectionChanged();

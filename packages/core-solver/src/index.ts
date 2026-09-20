@@ -32,6 +32,7 @@ export * from './cfg-first-follow';
 export * from './ll1-parser';
 export * from './cfg-transformations';
 export * from './pda-cfg-translation';
+export * from './automaton-adapter';
 
 
 

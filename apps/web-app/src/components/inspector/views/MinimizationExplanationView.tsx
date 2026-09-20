@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGraph } from '../../../context/GraphContext';
-import { minimizeDFA, RegexASTNode } from '@project-zero/core-solver';
+import { minimizeDFA, RegexASTNode, expandSolverEdges } from '@project-zero/core-solver';
 import {
   Cpu,
   Layers,
@@ -34,7 +34,7 @@ export const MinimizationExplanationView: React.FC = () => {
 
   const handleRunMinimization = () => {
     if (machineType !== 'DFA') return;
-    const res = minimizeDFA({ nodes, edges });
+    const res = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
       replaceMachine([...res.nodes], [...res.edges], 'DFA');

@@ -2,12 +2,17 @@ import { SolverGraphInput, DFAMinimizationResult, DFAMinimizationEquivalenceClas
 import { validateDFA } from './dfa-validator';
 import { normalizeSymbol, isEpsilonSymbol } from './nfa-validator';
 import { StateNode, TransitionEdge } from '@project-zero/canvas-renderer';
+import { expandSolverEdges } from './automaton-adapter';
 
 /**
  * Pure deterministic function: Minimizes a valid DFA using standard Partition Refinement mathematics.
  * Removes unreachable states, completes missing transitions via a trap state if required, and merges equivalent states.
  */
-export function minimizeDFA(graph: SolverGraphInput): DFAMinimizationResult {
+export function minimizeDFA(inputGraph: SolverGraphInput): DFAMinimizationResult {
+  const graph: SolverGraphInput = {
+    nodes: inputGraph.nodes,
+    edges: expandSolverEdges(inputGraph.edges, 'FA'),
+  };
   const validationResult = validateDFA(graph);
   if (!validationResult.isValid) {
     return {

@@ -78,7 +78,7 @@ export const TransitionSymbolModal: React.FC<TransitionSymbolModalProps> = ({
       const inSym = inputSymbol.trim() || 'ε';
       const topSym = stackTop.trim() || 'ε';
       const replSym = stackReplacement.trim() || 'ε';
-      const label = `${inSym}, ${topSym} / ${replSym}`;
+      const label = `${inSym}, ${topSym} -> ${replSym}`;
 
       onConfirm({
         label,
@@ -117,7 +117,7 @@ export const TransitionSymbolModal: React.FC<TransitionSymbolModalProps> = ({
   const isTM = machineType === 'TM';
 
   const previewLabel = isPDA
-    ? `${inputSymbol.trim() || 'ε'}, ${stackTop.trim() || 'ε'} / ${stackReplacement.trim() || 'ε'}`
+    ? `${inputSymbol.trim() || 'ε'}, ${stackTop.trim() || 'ε'} -> ${stackReplacement.trim() || 'ε'}`
     : isTM
     ? `${readSymbol.trim() || '0'} → ${writeSymbol.trim() || '1'}, ${moveDirection}`
     : symbol.trim() || 'ε';

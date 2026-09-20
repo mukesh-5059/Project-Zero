@@ -141,7 +141,7 @@ export class EdgeRenderer {
     const targetRadius = getNodeRadius(targetNode);
 
     if (edge.isSelfLoop || edge.sourceNodeId === edge.targetNodeId) {
-      return computeSelfLoopGeometry(sourceNode, sourceRadius);
+      return computeSelfLoopGeometry(sourceNode, sourceRadius, edge.parallelIndex);
     } else if (edge.parallelIndex && edge.parallelIndex !== 0) {
       return computeCurvedEdgeGeometry(
         sourceNode,
@@ -295,12 +295,18 @@ export class EdgeRenderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const metrics = ctx.measureText(edge.label);
-    const textWidth = metrics.width;
-    const textHeight = fontSize;
+    const lines = edge.label.split('\n');
+    let maxLineWidth = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const w = ctx.measureText(lines[i]).width;
+      if (w > maxLineWidth) maxLineWidth = w;
+    }
+
+    const lineHeight = fontSize * 1.25;
+    const textHeight = lines.length * lineHeight;
 
     const pillPadding = DEFAULT_LABEL_BACKGROUND_PILL_PADDING;
-    const pillW = textWidth + pillPadding * 2;
+    const pillW = maxLineWidth + pillPadding * 2;
     const pillH = textHeight + pillPadding;
     const pillX = screenPos.x - pillW / 2;
     const pillY = screenPos.y - pillH / 2;
@@ -320,8 +326,11 @@ export class EdgeRenderer {
     ctx.stroke();
     ctx.restore();
 
-    // 2. Render Transition Text Symbol
+    // 2. Render Transition Text Symbol(s)
     ctx.fillStyle = textColor;
-    ctx.fillText(edge.label, screenPos.x, screenPos.y);
+    const startY = screenPos.y - ((lines.length - 1) * lineHeight) / 2;
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], screenPos.x, startY + i * lineHeight);
+    }
   }
 }

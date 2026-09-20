@@ -5,6 +5,9 @@ import { StateNode } from './state/state-node';
 import { Viewport } from './camera/viewport';
 import { Camera } from './camera/camera';
 import { RenderQueue } from './pipeline/render-queue';
+import { StateRenderer } from './state/state-renderer';
+import { EdgeRenderer } from './edge/edge-renderer';
+import { TransitionEdge } from './edge/edge-transition';
 
 describe('MarqueeController Subsystem & Semantics', () => {
   let marqueeController: MarqueeController;
@@ -77,5 +80,56 @@ describe('MarqueeController Subsystem & Semantics', () => {
 
     marqueeController.enqueueDrawCommands(queue, context, camera);
     expect(queue.getCount()).toBe(1);
+  });
+
+  it('selects edges intersected by marquee rectangle', () => {
+    const stateRenderer = new StateRenderer();
+    const edgeRenderer = new EdgeRenderer();
+    stateRenderer.setStateNodes(nodes);
+
+    const edge1: TransitionEdge = { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q1', label: 'a' };
+    const edge2: TransitionEdge = { id: 'e2', sourceNodeId: 'q0', targetNodeId: 'q2', label: 'b' };
+    edgeRenderer.setEdges([edge1, edge2]);
+
+    // Marquee from (50, -20) to (150, 20) covers midpoint of edge1 (100, 0), but misses edge2 (0, 100)
+    marqueeController.startMarquee(context, { x: 50, y: -20 });
+    marqueeController.updateMarquee(
+      context,
+      { x: 150, y: 20 },
+      nodes,
+      false,
+      [edge1, edge2],
+      stateRenderer,
+      edgeRenderer
+    );
+
+    expect(context.isEdgeSelected('e1')).toBe(true);
+    expect(context.isEdgeSelected('e2')).toBe(false);
+  });
+
+  it('supports additive edge selection in marquee', () => {
+    const stateRenderer = new StateRenderer();
+    const edgeRenderer = new EdgeRenderer();
+    stateRenderer.setStateNodes(nodes);
+
+    const edge1: TransitionEdge = { id: 'e1', sourceNodeId: 'q0', targetNodeId: 'q1', label: 'a' };
+    const edge2: TransitionEdge = { id: 'e2', sourceNodeId: 'q0', targetNodeId: 'q2', label: 'b' };
+    edgeRenderer.setEdges([edge1, edge2]);
+
+    context.selectEdge('e2');
+
+    marqueeController.startMarquee(context, { x: 50, y: -20 }, true);
+    marqueeController.updateMarquee(
+      context,
+      { x: 150, y: 20 },
+      nodes,
+      true,
+      [edge1, edge2],
+      stateRenderer,
+      edgeRenderer
+    );
+
+    expect(context.isEdgeSelected('e1')).toBe(true);
+    expect(context.isEdgeSelected('e2')).toBe(true);
   });
 });

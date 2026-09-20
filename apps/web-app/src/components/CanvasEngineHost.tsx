@@ -32,6 +32,7 @@ export const CanvasEngineHost: React.FC = () => {
     moveNode,
     addEdge,
     removeEdge,
+    updateEdge,
     setSelection,
     setTool,
   } = useGraph();
@@ -88,7 +89,7 @@ export const CanvasEngineHost: React.FC = () => {
             e.label === 'ε' ||
             e.label === 'λ' ||
             e.label.trim() === '' ||
-            (readSym !== null && e.label.trim() === readSym)
+            (readSym !== null && e.label.split(',').map((s) => s.trim()).includes(readSym))
           : false;
 
       return {
@@ -349,6 +350,37 @@ export const CanvasEngineHost: React.FC = () => {
   // Handle modal confirmation
   const handleConfirmTransition = (data: ConfirmTransitionData) => {
     if (!pendingTransition) return;
+
+    // Option A: Aggregate transitions between identical directed state pairs
+    const existingEdge = edges.find(
+      (e) => e.sourceNodeId === pendingTransition.sourceId && e.targetNodeId === pendingTransition.targetId
+    );
+
+    if (existingEdge) {
+      let mergedLabel = existingEdge.label || '';
+      if (machineType === 'FA' || machineType === 'DFA' || machineType === 'NFA') {
+        const existingSymbols = mergedLabel.split(',').map((s) => s.trim()).filter(Boolean);
+        const incomingSymbol = data.label.trim();
+        if (!existingSymbols.includes(incomingSymbol)) {
+          existingSymbols.push(incomingSymbol);
+        }
+        mergedLabel = existingSymbols.join(', ');
+      } else {
+        // PDA / TM rule aggregation
+        const existingRules = mergedLabel.split('\n').map((s) => s.trim()).filter(Boolean);
+        const incomingRule = data.label.trim();
+        if (!existingRules.includes(incomingRule)) {
+          existingRules.push(incomingRule);
+        }
+        mergedLabel = existingRules.join('\n');
+      }
+
+      updateEdge(existingEdge.id, { label: mergedLabel });
+      setSelection([], [existingEdge.id]);
+      setPendingTransition(null);
+      return;
+    }
+
     const newEdgeId = `edge_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     addEdge({
       id: newEdgeId,

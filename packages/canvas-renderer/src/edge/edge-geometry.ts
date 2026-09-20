@@ -260,12 +260,14 @@ export function computeCurvedEdgeGeometry(
 
 /**
  * Computes self-loop arc geometry projecting upward from top of node circle.
+ * Supports non-overlapping concentric nesting via parallelIndex.
  */
 export function computeSelfLoopGeometry(
   sourceCenter: Point2D,
-  sourceRadius: number
+  sourceRadius: number,
+  parallelIndex: number = 0
 ): EdgePathGeometry {
-  const loopRadius = DEFAULT_SELF_LOOP_RADIUS;
+  const loopRadius = DEFAULT_SELF_LOOP_RADIUS + Math.abs(parallelIndex) * 16;
 
   // Arc leaves at angle -135deg (top-left) and enters at angle -45deg (top-right)
   const angleStart = -Math.PI * 0.75;
@@ -322,8 +324,13 @@ export function computeEdgeLabelBoundingBox(
     x: geometry.labelAnchor.x + geometry.labelNormal.x * DEFAULT_LABEL_NORMAL_OFFSET,
     y: geometry.labelAnchor.y + geometry.labelNormal.y * DEFAULT_LABEL_NORMAL_OFFSET,
   };
-  const textWidth = Math.max(16, label.length * 8);
-  const textHeight = 13;
+  const lines = label.split('\n');
+  let maxLen = 0;
+  for (const line of lines) {
+    if (line.length > maxLen) maxLen = line.length;
+  }
+  const textWidth = Math.max(16, maxLen * 8);
+  const textHeight = Math.max(13, lines.length * 14);
   const pillW = textWidth + padding * 2;
   const pillH = textHeight + padding;
 

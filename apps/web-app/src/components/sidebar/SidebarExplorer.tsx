@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useGraph } from '../../context/GraphContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { Code, ArrowRightLeft, Zap } from 'lucide-react';
-import { convertNfaToDfa, minimizeDFA } from '@project-zero/core-solver';
+import { convertNfaToDfa, minimizeDFA, isFA_NFA, expandSolverEdges } from '@project-zero/core-solver';
 import { RegexModal } from '../modals/RegexModal';
 
 export const SidebarExplorer: React.FC = () => {
@@ -17,16 +17,7 @@ export const SidebarExplorer: React.FC = () => {
 
   const isGraphNFA = React.useMemo(() => {
     if (!isStructurallyValidFA) return false;
-    if (edges.some((e) => !e.label || e.label === 'ε' || e.label === 'λ' || e.label.trim() === '')) return true;
-    for (const node of nodes) {
-      const seen = new Set<string>();
-      for (const e of edges.filter((edge) => edge.sourceNodeId === node.id)) {
-        const sym = e.label.trim();
-        if (seen.has(sym)) return true;
-        seen.add(sym);
-      }
-    }
-    return false;
+    return isFA_NFA(nodes, edges);
   }, [nodes, edges, isStructurallyValidFA]);
 
   const isGraphDFA = React.useMemo(() => {
@@ -35,14 +26,14 @@ export const SidebarExplorer: React.FC = () => {
   }, [isStructurallyValidFA, isGraphNFA]);
 
   const handleNfaToDfaConversion = () => {
-    const res = convertNfaToDfa({ nodes, edges });
+    const res = convertNfaToDfa({ nodes, edges: expandSolverEdges(edges, 'FA') });
     if (res.success && res.nodes.length > 0) {
       replaceMachine([...res.nodes], [...res.edges], 'FA');
     }
   };
 
   const handleDfaMinimization = () => {
-    const res = minimizeDFA({ nodes, edges });
+    const res = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
       replaceMachine([...res.nodes], [...res.edges], 'FA');
