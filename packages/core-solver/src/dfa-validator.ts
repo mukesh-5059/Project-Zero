@@ -1,4 +1,5 @@
 import { SolverGraphInput, DFAValidationResult, DFAValidationError, DFACompletenessResult, DFAMissingTransition } from './types';
+import { expandSolverEdges } from './automaton-adapter';
 
 /**
  * Validates whether a graph qualifies as a mathematically sound Deterministic Finite Automaton (DFA).
@@ -70,15 +71,17 @@ export function validateDFA(graph: SolverGraphInput): DFAValidationResult {
   }
 
   // Check determinism: no state q has multiple transitions for the same symbol a
+  const expandedEdges = expandSolverEdges(graph.edges, 'FA');
   for (const node of graph.nodes) {
-    const outgoing = graph.edges.filter((e) => e.sourceNodeId === node.id);
+    const outgoing = expandedEdges.filter((e) => e.sourceNodeId === node.id);
     const symbolCounts = new Map<string, string[]>(); // symbol -> edgeIds
 
     for (const edge of outgoing) {
       if (!edge.label || edge.label === 'ε' || edge.label === 'λ') continue;
-      const list = symbolCounts.get(edge.label) ?? [];
+      const sym = edge.label.trim();
+      const list = symbolCounts.get(sym) ?? [];
       list.push(edge.id);
-      symbolCounts.set(edge.label, list);
+      symbolCounts.set(sym, list);
     }
 
     for (const [symbol, edgeIds] of symbolCounts.entries()) {
@@ -114,9 +117,10 @@ export function validateDFA(graph: SolverGraphInput): DFAValidationResult {
  * Structural validity and completeness are distinct concepts.
  */
 export function analyzeDFACompleteness(graph: SolverGraphInput): DFACompletenessResult {
+  const expandedEdges = expandSolverEdges(graph.edges, 'FA');
   const alphabet = Array.from(
     new Set(
-      graph.edges
+      expandedEdges
         .map((e) => e.label)
         .filter((l) => l && l.trim().length > 0 && l !== 'ε' && l !== 'λ')
     )
@@ -125,8 +129,8 @@ export function analyzeDFACompleteness(graph: SolverGraphInput): DFACompleteness
   const missingTransitions: DFAMissingTransition[] = [];
 
   for (const node of graph.nodes) {
-    const nodeOutgoingEdges = graph.edges.filter((e) => e.sourceNodeId === node.id);
-    const outgoingSymbols = new Set(nodeOutgoingEdges.map((e) => e.label));
+    const nodeOutgoingEdges = expandedEdges.filter((e) => e.sourceNodeId === node.id);
+    const outgoingSymbols = new Set(nodeOutgoingEdges.map((e) => e.label.trim()));
 
     for (const symbol of alphabet) {
       if (!outgoingSymbols.has(symbol)) {

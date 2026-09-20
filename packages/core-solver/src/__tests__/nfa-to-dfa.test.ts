@@ -140,7 +140,7 @@ describe('NFA → DFA Subset Construction Pure Core Solver Tests', () => {
       expect(deadNode.isAccepting).toBe(false);
       // Dead state must self-loop on all alphabet symbols
       const deadLoops = res.edges.filter((e) => e.sourceNodeId === deadNode.id && e.targetNodeId === deadNode.id);
-      expect(deadLoops.map((e) => e.label).sort()).toEqual(['a', 'b']);
+      expect(deadLoops.flatMap((e) => e.label.split(',').map((s) => s.trim())).sort()).toEqual(['a', 'b']);
     }
   });
 

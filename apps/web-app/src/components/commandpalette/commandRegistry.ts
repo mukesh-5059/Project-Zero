@@ -149,28 +149,18 @@ export const COMMAND_REGISTRY: ICommand[] = [
     icon: CheckCircle,
     keywords: ['analyze', 'completeness', 'validation', 'telemetry'],
   },
-
-  /* AI commands commented out for later
-  {
-    id: 'ai-open-assistant',
-    title: 'Open Theoretical AI Assistant Workspace',
-    category: 'Workspace',
-    icon: Bot,
-    keywords: ['ai', 'assistant', 'tutor', 'guidance', 'chat', 'proofs'],
-  },
-  {
-    id: 'ai-tutor-ask',
-    title: 'Ask AI Tutor for Step Guidance',
-    category: 'AI Assistant',
-    icon: Bot,
-    keywords: ['ai', 'tutor', 'guidance', 'help'],
-  },
   {
     id: 'ai-tutor-explain',
     title: 'AI Explain Automaton Execution Trace',
-    category: 'AI Assistant',
+    category: 'Analysis',
     icon: HelpCircle,
-    keywords: ['ai', 'explain', 'trace', 'reasoning'],
+    keywords: ['ai', 'explain', 'trace', 'reasoning', 'tutor'],
   },
-  */
+  {
+    id: 'ai-tutor-ask',
+    title: 'Ask AI Tutor for Machine Guidance',
+    category: 'Analysis',
+    icon: Bot,
+    keywords: ['ai', 'tutor', 'guidance', 'help'],
+  },
 ];

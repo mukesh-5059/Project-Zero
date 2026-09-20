@@ -11,9 +11,15 @@ const RECENT_STORAGE_KEY = 'v1_recent_commands';
 
 export const CommandPaletteModal: React.FC = () => {
   const { isOpen, closePalette } = useCommandPalette();
-  const { setTheme } = useTheme();
-  const { toggleSidebar, toggleInspector, toggleBottomPanel, resetLayout, setActiveSidebarTab } =
-    useWorkspace();
+  const {
+    toggleSidebar,
+    toggleInspector,
+    toggleBottomPanel,
+    resetLayout,
+    setActiveSidebarTab,
+    setActiveInspectorTab,
+    expandPanel,
+  } = useWorkspace();
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -108,7 +114,11 @@ export const CommandPaletteModal: React.FC = () => {
         if (regexBtn) regexBtn.click();
         break;
       }
-      case 'solver-analyze': {
+      case 'solver-analyze':
+      case 'ai-tutor-explain':
+      case 'ai-tutor-ask': {
+        setActiveInspectorTab('analysis');
+        expandPanel('inspector');
         const analyzeBtn = document.getElementById('btn-ai-analyze');
         if (analyzeBtn) analyzeBtn.click();
         break;

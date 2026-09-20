@@ -11,9 +11,10 @@ export const SidebarExplorer: React.FC = () => {
   const { nodes, edges, machineType, replaceMachine, setMachineType, setLastMinimizationResult, setLastRegexResult } = useGraph();
   const { expandPanel, setActiveInspectorTab } = useWorkspace();
 
+  const isFAContext = machineType === 'FA' || machineType === 'DFA' || machineType === 'NFA';
   const hasInitialState = React.useMemo(() => nodes.some((n) => n.isInitial), [nodes]);
   const hasAcceptingState = React.useMemo(() => nodes.some((n) => n.isAccepting), [nodes]);
-  const isStructurallyValidFA = hasInitialState && hasAcceptingState;
+  const isStructurallyValidFA = isFAContext && hasInitialState && hasAcceptingState;
 
   const isGraphNFA = React.useMemo(() => {
     if (!isStructurallyValidFA) return false;
@@ -26,6 +27,7 @@ export const SidebarExplorer: React.FC = () => {
   }, [isStructurallyValidFA, isGraphNFA]);
 
   const handleNfaToDfaConversion = () => {
+    if (!isFAContext) return;
     const res = convertNfaToDfa({ nodes, edges: expandSolverEdges(edges, 'FA') });
     if (res.success && res.nodes.length > 0) {
       replaceMachine([...res.nodes], [...res.edges], 'FA');
@@ -33,6 +35,7 @@ export const SidebarExplorer: React.FC = () => {
   };
 
   const handleDfaMinimization = () => {
+    if (!isFAContext) return;
     const res = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
@@ -272,7 +275,9 @@ export const SidebarExplorer: React.FC = () => {
                 <div>
                   <div className="font-medium text-txt-primary text-xs">NFA → DFA Subset Construction</div>
                   <div className="text-[10px] text-txt-muted">
-                    {!hasInitialState
+                    {!isFAContext
+                      ? `Not applicable to ${machineType} (FA only)`
+                      : !hasInitialState
                       ? 'Requires initial state (q₀)'
                       : !hasAcceptingState
                       ? 'Requires final accepting state'
@@ -296,7 +301,9 @@ export const SidebarExplorer: React.FC = () => {
                 <div>
                   <div className="font-medium text-txt-primary text-xs">Hopcroft DFA Minimization</div>
                   <div className="text-[10px] text-txt-muted">
-                    {!hasInitialState
+                    {!isFAContext
+                      ? `Not applicable to ${machineType} (FA only)`
+                      : !hasInitialState
                       ? 'Requires initial state (q₀)'
                       : !hasAcceptingState
                       ? 'Requires final accepting state'

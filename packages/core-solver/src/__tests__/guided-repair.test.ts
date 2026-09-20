@@ -249,4 +249,69 @@ describe('Guided Automata Construction & Repair Engine Tests', () => {
     const emptyDiag = report.diagnostics.find((d) => d.code === 'DFA_EMPTY_TRANSITION_SYMBOL');
     expect(emptyDiag?.repairs[0].category).toBe('POTENTIALLY_LANGUAGE_CHANGING');
   });
+
+  it('17. Reuses existing trap state (Ø) rather than creating duplicate trap states', () => {
+    const nodes: StateNode[] = [
+      { id: 'q0', label: 'q0', x: 0, y: 0, isInitial: true, isAccepting: false },
+      { id: 'q1', label: 'q1', x: 100, y: 0, isInitial: false, isAccepting: true },
+      { id: 'trap1', label: 'Ø', x: 200, y: 200, isInitial: false, isAccepting: false },
+    ];
+    const edges: TransitionEdge[] = [
+      { id: 'e0', sourceNodeId: 'q0', targetNodeId: 'q1', label: 'a' },
+      { id: 'e_loop', sourceNodeId: 'trap1', targetNodeId: 'trap1', label: 'a, b' },
+    ];
+
+    const report = generateDiagnostics({ nodes, edges }, 'DFA');
+    const missingDiag = report.diagnostics.find(
+      (d) => d.code === 'DFA_MISSING_TRANSITION' && d.affectedStateIds.includes('q0')
+    )!;
+    expect(missingDiag).toBeDefined();
+
+    // Repair should offer connecting to existing trap state
+    const repair = missingDiag.repairs.find(
+      (r) => r.actionType === 'CREATE_TRAP_STATE_AND_TRANSITION'
+    )!;
+    expect(repair.title).toContain('Connect to Trap State');
+
+    const preview = computeRepairPreview({ nodes, edges }, repair, 'DFA');
+
+    // Crucial: Must NOT add a new node, must reuse existing trap1
+    expect(preview.diff.addedNodes).toHaveLength(0);
+    expect(preview.afterNodes).toHaveLength(3);
+    expect(preview.afterEdges.some((e) => e.sourceNodeId === 'q0' && e.targetNodeId === 'trap1')).toBe(true);
+  });
+
+  it('18. Aggregates transitions when adding another transition between same pair', () => {
+    const nodes: StateNode[] = [
+      { id: 'q0', label: 'q0', x: 0, y: 0, isInitial: true, isAccepting: false },
+      { id: 'trap1', label: 'Ø', x: 200, y: 200, isInitial: false, isAccepting: false },
+    ];
+    const edges: TransitionEdge[] = [
+      { id: 'e0', sourceNodeId: 'q0', targetNodeId: 'trap1', label: 'a' },
+      { id: 'loop', sourceNodeId: 'trap1', targetNodeId: 'trap1', label: 'a, b' },
+    ];
+
+    const repair: AutomataRepairSuggestion = {
+      id: 'rep-test',
+      diagnosticId: 'diag-test',
+      title: 'Add b to trap',
+      description: 'Test',
+      category: 'SAFE',
+      actionType: 'CREATE_TRAP_STATE_AND_TRANSITION',
+      payload: {
+        sourceNodeId: 'q0',
+        targetNodeId: 'trap1',
+        symbol: 'b',
+      },
+    };
+
+    const preview = computeRepairPreview({ nodes, edges }, repair, 'DFA');
+    expect(preview.afterNodes).toHaveLength(2);
+    // The edge between q0 and trap1 should be merged into 'a, b'
+    const edgeQ0toTrap = preview.afterEdges.find((e) => e.sourceNodeId === 'q0' && e.targetNodeId === 'trap1');
+    expect(edgeQ0toTrap?.label).toBe('a, b');
+    // Trap self loop should remain consolidated
+    const trapLoop = preview.afterEdges.find((e) => e.sourceNodeId === 'trap1' && e.targetNodeId === 'trap1');
+    expect(trapLoop?.label).toBe('a, b');
+  });
 });

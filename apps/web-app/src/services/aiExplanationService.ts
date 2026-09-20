@@ -1,6 +1,8 @@
 import { MachineAnalysisResult, ExecutionExplanationResult } from '@project-zero/core-solver';
 import { AutomatonType } from '@project-zero/shared';
 
+import { sendChatMessage } from './aiChatService';
+
 export interface AIExplanationPayload {
   machineType: AutomatonType;
   analysis: MachineAnalysisResult;
@@ -9,7 +11,7 @@ export interface AIExplanationPayload {
 }
 
 /**
- * Service: Fetches educational AI explanations from NVIDIA NIM backend/MCP server.
+ * Service: Fetches educational AI explanations from the AI gateway / NVIDIA NIM.
  * Handles timeouts, network unavailability, and gracefully falls back to deterministic explanations.
  */
 export async function fetchAIExplanation(payload: AIExplanationPayload): Promise<string> {
@@ -45,34 +47,18 @@ Rules:
 - Do NOT alter any mathematical facts or result statuses.
 - Keep the response under 150 words.`;
 
-    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 300,
-        temperature: 0.2,
-      }),
-      signal: controller.signal,
-    });
+    const res = await sendChatMessage(
+      [{ role: 'user', content: prompt }],
+      { signal: controller.signal }
+    );
 
     clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      throw new Error(`NVIDIA NIM API responded with status ${response.status}`);
+    if (res.message?.content) {
+      return res.message.content.trim();
     }
-
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content;
-    if (!text || typeof text !== 'string') {
-      throw new Error('Malformed AI model response');
-    }
-
-    return text.trim();
-  } catch (err: unknown) {
+    throw new Error('Malformed AI model response');
+  } catch (_err: unknown) {
     clearTimeout(timeoutId);
 
     // Deterministic fallback when AI service is unavailable

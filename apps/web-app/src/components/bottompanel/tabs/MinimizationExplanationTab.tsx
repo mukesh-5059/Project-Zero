@@ -7,11 +7,11 @@ export const MinimizationExplanationTab: React.FC = () => {
   const { lastMinimizationResult, nodes, edges, machineType, setLastMinimizationResult, replaceMachine } = useGraph();
 
   const handleRunMinimization = () => {
-    if (machineType !== 'DFA') return;
+    if (machineType !== 'DFA' && machineType !== 'FA') return;
     const res = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'DFA');
+      replaceMachine([...res.nodes], [...res.edges], 'FA');
     }
   };
 
@@ -27,7 +27,7 @@ export const MinimizationExplanationTab: React.FC = () => {
             Run Hopcroft Partition Refinement Minimization on your active DFA to inspect step-by-step equivalence classes, partition splits, and formal 5-tuple proofs.
           </p>
         </div>
-        {machineType === 'DFA' ? (
+        {machineType === 'DFA' || machineType === 'FA' ? (
           <button
             onClick={handleRunMinimization}
             className="px-4 py-1.5 rounded-md bg-accent-primary hover:bg-accent-hover text-white font-semibold flex items-center space-x-1.5 transition-colors shadow-xs"
@@ -37,7 +37,7 @@ export const MinimizationExplanationTab: React.FC = () => {
           </button>
         ) : (
           <div className="px-3 py-1.5 rounded bg-semantic-warning/15 border border-semantic-warning/30 text-semantic-warning text-[11px] font-medium">
-            Active workspace is {machineType}. Hopcroft minimization requires a Deterministic Finite Automaton (DFA).
+            Active workspace is {machineType}. Hopcroft minimization is only applicable to Finite Automata (DFA).
           </div>
         )}
       </div>

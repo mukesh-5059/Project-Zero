@@ -14,6 +14,7 @@ import { validateTM } from './tm-validator';
 import { analyzeMachine } from './machine-analyzer';
 import { AutomatonType } from '@project-zero/shared';
 import { StateNode, TransitionEdge } from '@project-zero/canvas-renderer';
+import { classifyFA, expandSolverEdges } from './automaton-adapter';
 
 /**
  * Pure deterministic function: Inspects graph and machine type to produce a structured,
@@ -30,23 +31,7 @@ export function generateDiagnostics(
 
   const originalMachineType = machineType;
   if (machineType === 'FA') {
-    let isNFA = edges.some(e => isEpsilonSymbol(e.label));
-    if (!isNFA) {
-      for (const node of nodes) {
-        const outgoing = edges.filter(e => e.sourceNodeId === node.id);
-        const symbols = new Set<string>();
-        for (const e of outgoing) {
-          const norm = normalizeSymbol(e.label);
-          if (norm && symbols.has(norm)) {
-            isNFA = true;
-            break;
-          }
-          if (norm) symbols.add(norm);
-        }
-        if (isNFA) break;
-      }
-    }
-    machineType = isNFA ? 'NFA' : 'DFA';
+    machineType = classifyFA(nodes, edges);
   }
 
   // 1. Zero States (Empty Graph Q = ∅)
@@ -289,8 +274,9 @@ export function generateDiagnostics(
     });
 
     // Nondeterministic Transitions in DFA
+    const expandedEdges = expandSolverEdges(edges, 'FA');
     nodes.forEach((node) => {
-      const outgoing = edges.filter((e) => e.sourceNodeId === node.id);
+      const outgoing = expandedEdges.filter((e) => e.sourceNodeId === node.id);
       const symbolMap = new Map<string, string[]>();
 
       outgoing.forEach((e) => {
@@ -335,38 +321,60 @@ export function generateDiagnostics(
     // Missing DFA Transitions (Completeness Analysis)
     const completeness = analyzeDFACompleteness(graph);
     if (!completeness.isComplete && completeness.alphabet.length > 0) {
-      completeness.missingTransitions.forEach((missing) => {
-        const trapNode = nodes.find((n) => !n.isAccepting && n.id !== missing.stateId);
+      const existingTrapState = nodes.find(
+        (n) => !n.isAccepting && (n.label === 'Ø' || n.label?.toLowerCase() === 'trap' || n.label?.toLowerCase() === 'dead')
+      );
 
+      completeness.missingTransitions.forEach((missing) => {
         const repairs: AutomataRepairSuggestion[] = [];
-        if (trapNode) {
+
+        if (existingTrapState) {
           repairs.push({
-            id: `rep-add-trans-${missing.stateId}-${missing.symbol}-existing`,
+            id: `rep-connect-trap-${missing.stateId}-${missing.symbol}`,
             diagnosticId: `diag-miss-${missing.stateId}-${missing.symbol}`,
-            title: `Add Transition '${missing.stateLabel}' --${missing.symbol}--> '${trapNode.label || trapNode.id}'`,
-            description: `Connect missing transition on '${missing.symbol}' to existing non-accepting state '${trapNode.label || trapNode.id}'.`,
-            category: 'POTENTIALLY_LANGUAGE_CHANGING',
-            actionType: 'ADD_TRANSITION',
+            title: `Connect to Trap State (${existingTrapState.label || 'Ø'}) on '${missing.symbol}'`,
+            description: `Route missing transition on '${missing.symbol}' to existing trap state '${existingTrapState.label || 'Ø'}'.`,
+            category: 'SAFE',
+            actionType: 'CREATE_TRAP_STATE_AND_TRANSITION',
             payload: {
               sourceNodeId: missing.stateId,
-              targetNodeId: trapNode.id,
+              targetNodeId: existingTrapState.id,
+              symbol: missing.symbol,
+            },
+          });
+        } else {
+          repairs.push({
+            id: `rep-create-trap-${missing.stateId}-${missing.symbol}`,
+            diagnosticId: `diag-miss-${missing.stateId}-${missing.symbol}`,
+            title: `Create Trap State (Ø) & Add Transition '${missing.symbol}'`,
+            description: `Create a new explicit trap state 'Ø' with self-loops and route missing symbol '${missing.symbol}' to it.`,
+            category: 'SAFE',
+            actionType: 'CREATE_TRAP_STATE_AND_TRANSITION',
+            payload: {
+              sourceNodeId: missing.stateId,
               symbol: missing.symbol,
             },
           });
         }
 
-        repairs.push({
-          id: `rep-create-trap-${missing.stateId}-${missing.symbol}`,
-          diagnosticId: `diag-miss-${missing.stateId}-${missing.symbol}`,
-          title: `Create Trap State (Ø) & Add Transition '${missing.symbol}'`,
-          description: `Create a new explicit trap state 'Ø' with self-loops and route missing symbol '${missing.symbol}' to it.`,
-          category: 'SAFE',
-          actionType: 'CREATE_TRAP_STATE_AND_TRANSITION',
-          payload: {
-            sourceNodeId: missing.stateId,
-            symbol: missing.symbol,
-          },
-        });
+        const otherNonAcceptingNode = nodes.find(
+          (n) => !n.isAccepting && n.id !== missing.stateId && (!existingTrapState || n.id !== existingTrapState.id)
+        );
+        if (otherNonAcceptingNode) {
+          repairs.push({
+            id: `rep-add-trans-${missing.stateId}-${missing.symbol}-existing`,
+            diagnosticId: `diag-miss-${missing.stateId}-${missing.symbol}`,
+            title: `Add Transition '${missing.stateLabel}' --${missing.symbol}--> '${otherNonAcceptingNode.label || otherNonAcceptingNode.id}'`,
+            description: `Connect missing transition on '${missing.symbol}' to non-accepting state '${otherNonAcceptingNode.label || otherNonAcceptingNode.id}'.`,
+            category: 'POTENTIALLY_LANGUAGE_CHANGING',
+            actionType: 'ADD_TRANSITION',
+            payload: {
+              sourceNodeId: missing.stateId,
+              targetNodeId: otherNonAcceptingNode.id,
+              symbol: missing.symbol,
+            },
+          });
+        }
 
         diagnostics.push({
           id: `diag-miss-${missing.stateId}-${missing.symbol}`,
@@ -535,6 +543,10 @@ export function generateDiagnostics(
     analysis.trapStateIds.forEach((trapId) => {
       const node = nodes.find((n) => n.id === trapId);
       if (!node) return;
+      // Skip redundant informational notice if state was explicitly designated as a trap/dead state
+      const isExplicitTrap = node.label === 'Ø' || node.label?.toLowerCase() === 'trap' || node.label?.toLowerCase() === 'dead';
+      if (isExplicitTrap) return;
+
       const code: AutomataDiagnosticCode =
         machineType === 'NFA'
           ? 'NFA_DEAD_STATE'
@@ -607,52 +619,123 @@ export function computeRepairPreview(
   } else if (repair.actionType === 'REMOVE_EDGE' && repair.targetEntityId) {
     afterEdges = afterEdges.filter((e) => e.id !== repair.targetEntityId);
   } else if (repair.actionType === 'ADD_TRANSITION' && repair.payload) {
-    const newEdge: TransitionEdge = {
-      id: `edge-rep-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      sourceNodeId: repair.payload.sourceNodeId as string,
-      targetNodeId: repair.payload.targetNodeId as string,
-      label: repair.payload.symbol as string,
-    };
-    afterEdges = [...afterEdges, newEdge];
-  } else if (repair.actionType === 'CREATE_TRAP_STATE_AND_TRANSITION' && repair.payload) {
-    const trapNodeId = `node-trap-${Date.now()}`;
-    const newTrapNode: StateNode = {
-      id: trapNodeId,
-      label: 'Ø',
-      x: 350,
-      y: 250,
-      isInitial: false,
-      isAccepting: false,
-    };
-    const newEdge: TransitionEdge = {
-      id: `edge-trap-${Date.now()}`,
-      sourceNodeId: repair.payload.sourceNodeId as string,
-      targetNodeId: trapNodeId,
-      label: repair.payload.symbol as string,
-    };
+    const sourceNodeId = repair.payload.sourceNodeId as string;
+    const targetNodeId = repair.payload.targetNodeId as string;
+    const symbol = (repair.payload.symbol as string).trim();
 
-    // Extract alphabet Σ from beforeEdges + repair payload symbol
-    const rawSymbols = beforeEdges
+    const existingEdgeIndex = afterEdges.findIndex(
+      (e) => e.sourceNodeId === sourceNodeId && e.targetNodeId === targetNodeId
+    );
+
+    if (existingEdgeIndex !== -1) {
+      const existing = afterEdges[existingEdgeIndex];
+      const existingSymbols = (existing.label || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (!existingSymbols.includes(symbol)) {
+        existingSymbols.push(symbol);
+      }
+      afterEdges = afterEdges.map((e, idx) =>
+        idx === existingEdgeIndex ? { ...e, label: existingSymbols.join(', ') } : e
+      );
+    } else {
+      const newEdge: TransitionEdge = {
+        id: `edge-rep-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        sourceNodeId,
+        targetNodeId,
+        label: symbol,
+      };
+      afterEdges = [...afterEdges, newEdge];
+    }
+  } else if (repair.actionType === 'CREATE_TRAP_STATE_AND_TRANSITION' && repair.payload) {
+    const sourceNodeId = repair.payload.sourceNodeId as string;
+    const incomingSymbol = (repair.payload.symbol as string).trim();
+
+    // 1. Check if a dedicated trap state already exists
+    let targetTrapId = (repair.payload.targetNodeId as string) || '';
+    let existingTrapNode = afterNodes.find((n) => n.id === targetTrapId);
+
+    if (!existingTrapNode) {
+      existingTrapNode = afterNodes.find(
+        (n) => !n.isAccepting && (n.label === 'Ø' || n.label?.toLowerCase() === 'trap' || n.label?.toLowerCase() === 'dead')
+      );
+    }
+
+    if (existingTrapNode) {
+      targetTrapId = existingTrapNode.id;
+    } else {
+      const xs = afterNodes.map((n) => n.x);
+      const ys = afterNodes.map((n) => n.y);
+      const minX = xs.length > 0 ? Math.min(...xs) : 150;
+      const avgY = ys.length > 0 ? ys.reduce((a, b) => a + b, 0) / ys.length : 250;
+
+      targetTrapId = `node-trap-${Date.now()}`;
+      const newTrapNode: StateNode = {
+        id: targetTrapId,
+        label: 'Ø',
+        x: Math.max(80, minX - 180),
+        y: avgY,
+        isInitial: false,
+        isAccepting: false,
+      };
+      afterNodes = [...afterNodes, newTrapNode];
+    }
+
+    // 2. Connect from sourceNodeId to targetTrapId with incomingSymbol
+    const existingEdgeIndex = afterEdges.findIndex(
+      (e) => e.sourceNodeId === sourceNodeId && e.targetNodeId === targetTrapId
+    );
+
+    if (existingEdgeIndex !== -1) {
+      const existingEdge = afterEdges[existingEdgeIndex];
+      const existingSymbols = (existingEdge.label || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (!existingSymbols.includes(incomingSymbol)) {
+        existingSymbols.push(incomingSymbol);
+      }
+      afterEdges = afterEdges.map((e, idx) =>
+        idx === existingEdgeIndex ? { ...e, label: existingSymbols.join(', ') } : e
+      );
+    } else {
+      const newEdge: TransitionEdge = {
+        id: `edge-trap-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        sourceNodeId,
+        targetNodeId: targetTrapId,
+        label: incomingSymbol,
+      };
+      afterEdges = [...afterEdges, newEdge];
+    }
+
+    // 3. Ensure trap state has a clean, single self-loop covering all alphabet symbols
+    const expandedForAlphabet = expandSolverEdges(afterEdges, 'FA');
+    const rawSymbols = expandedForAlphabet
       .map((e) => normalizeSymbol(e.label))
       .filter((l) => l.length > 0 && !isEpsilonSymbol(l));
-    if (repair.payload.symbol) {
-      const payloadNorm = normalizeSymbol(repair.payload.symbol as string);
-      if (payloadNorm && !isEpsilonSymbol(payloadNorm)) {
-        rawSymbols.push(payloadNorm);
-      }
+    if (incomingSymbol) {
+      const norm = normalizeSymbol(incomingSymbol);
+      if (norm && !isEpsilonSymbol(norm)) rawSymbols.push(norm);
     }
     const alphabet = Array.from(new Set(rawSymbols)).sort();
 
-    // Create self-loop edges on trap state for every symbol in Σ
-    const trapSelfLoops: TransitionEdge[] = alphabet.map((sym, idx) => ({
-      id: `edge-trap-loop-${Date.now()}-${idx}`,
-      sourceNodeId: trapNodeId,
-      targetNodeId: trapNodeId,
-      label: sym,
-    }));
+    // Remove all previous self-loops on the trap state to avoid overlapping duplicates
+    const otherEdges = afterEdges.filter(
+      (e) => !(e.sourceNodeId === targetTrapId && e.targetNodeId === targetTrapId)
+    );
 
-    afterNodes = [...afterNodes, newTrapNode];
-    afterEdges = [...afterEdges, newEdge, ...trapSelfLoops];
+    if (alphabet.length > 0) {
+      const trapSelfLoop: TransitionEdge = {
+        id: `edge-trap-loop-${targetTrapId}`,
+        sourceNodeId: targetTrapId,
+        targetNodeId: targetTrapId,
+        label: alphabet.join(', '),
+      };
+      afterEdges = [...otherEdges, trapSelfLoop];
+    } else {
+      afterEdges = otherEdges;
+    }
   }
 
   // Calculate explicit diff

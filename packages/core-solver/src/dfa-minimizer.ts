@@ -270,7 +270,7 @@ export function minimizeDFA(inputGraph: SolverGraphInput): DFAMinimizationResult
     });
   });
 
-  // Construct Minimized Edges
+  // Construct Minimized Edges (Option A: Symbol Aggregation)
   const minEdges: TransitionEdge[] = [];
   let edgeCounter = 1;
 
@@ -278,19 +278,27 @@ export function minimizeDFA(inputGraph: SolverGraphInput): DFAMinimizationResult
     const sourceMinId = `min_q${sourceIdx}`;
     const repStateId = sourceGroup[0];
 
+    const targetToSymbols = new Map<string, string[]>();
+
     for (const sym of alphabet) {
       const targetId = getNextStateId(repStateId, sym);
       const targetGroupIdx = finalPartitions.findIndex((p) => p.includes(targetId));
 
       if (targetGroupIdx !== -1) {
         const targetMinId = `min_q${targetGroupIdx}`;
-        minEdges.push({
-          id: `min_e${edgeCounter++}`,
-          sourceNodeId: sourceMinId,
-          targetNodeId: targetMinId,
-          label: sym,
-        });
+        const list = targetToSymbols.get(targetMinId) ?? [];
+        list.push(sym);
+        targetToSymbols.set(targetMinId, list);
       }
+    }
+
+    for (const [targetMinId, symbols] of targetToSymbols.entries()) {
+      minEdges.push({
+        id: `min_e${edgeCounter++}`,
+        sourceNodeId: sourceMinId,
+        targetNodeId: targetMinId,
+        label: symbols.join(', '),
+      });
     }
   });
 

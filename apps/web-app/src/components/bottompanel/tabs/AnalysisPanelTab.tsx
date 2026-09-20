@@ -107,6 +107,18 @@ export const AnalysisPanelTab: React.FC = () => {
     if (activeMode !== 'TRANSFORM' && activeMode !== 'PROOF') return null;
 
     if (selectedOp === 'NFA_TO_DFA') {
+      if (machineType !== 'FA' && machineType !== 'NFA' && machineType !== 'DFA') {
+        return {
+          success: false,
+          operation: 'UNION',
+          nodes: [],
+          edges: [],
+          alphabet: [],
+          reachableStateCount: 0,
+          acceptingStateCount: 0,
+          errorMessage: `NFA to DFA conversion is only applicable to Finite Automata, not ${machineType}.`,
+        };
+      }
       const conv = convertNfaToDfa({ nodes, edges: expandSolverEdges(edges, 'FA') });
       if (!conv.success) {
         return {
@@ -132,6 +144,18 @@ export const AnalysisPanelTab: React.FC = () => {
     }
 
     if (selectedOp === 'DFA_MINIMIZE') {
+      if (machineType !== 'FA' && machineType !== 'DFA') {
+        return {
+          success: false,
+          operation: 'UNION',
+          nodes: [],
+          edges: [],
+          alphabet: [],
+          reachableStateCount: 0,
+          acceptingStateCount: 0,
+          errorMessage: `Hopcroft DFA minimization is only applicable to Finite Automata. Minimizing a ${machineType} is mathematically undecidable.`,
+        };
+      }
       const min = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
       if (!min.success) {
         return {

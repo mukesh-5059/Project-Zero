@@ -37,9 +37,10 @@ export const WorkspaceInspectorView: React.FC = () => {
   const alphabet = getAlphabet();
   const tuple5 = to5Tuple();
 
+  const isFAContext = machineType === 'FA' || machineType === 'DFA' || machineType === 'NFA';
   const hasInitialState = useMemo(() => nodes.some((n) => n.isInitial), [nodes]);
   const hasAcceptingState = useMemo(() => nodes.some((n) => n.isAccepting), [nodes]);
-  const isStructurallyValidFA = hasInitialState && hasAcceptingState;
+  const isStructurallyValidFA = isFAContext && hasInitialState && hasAcceptingState;
 
   const isGraphNFA = useMemo(() => {
     if (!isStructurallyValidFA) return false;
@@ -52,6 +53,7 @@ export const WorkspaceInspectorView: React.FC = () => {
   }, [isStructurallyValidFA, isGraphNFA]);
 
   const handleNfaToDfaConversion = () => {
+    if (!isFAContext) return;
     const res = convertNfaToDfa({ nodes, edges: expandSolverEdges(edges, 'FA') });
     if (res.success && res.nodes.length > 0) {
       replaceMachine([...res.nodes], [...res.edges], 'FA');
@@ -59,6 +61,7 @@ export const WorkspaceInspectorView: React.FC = () => {
   };
 
   const handleDfaMinimization = () => {
+    if (!isFAContext) return;
     const res = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {

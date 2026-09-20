@@ -194,16 +194,33 @@ export function convertNfaToDfa(graph: SolverGraphInput): NFAConversionResult {
     });
   }
 
-  // 3. Generate TransitionEdges (merge parallel edges where applicable)
+  // 3. Generate TransitionEdges (Option A: Symbol Aggregation)
   const dfaEdges: TransitionEdge[] = [];
   let edgeCounter = 1;
 
+  const pairToSymbols = new Map<string, { sourceId: string; targetId: string; symbols: string[] }>();
   for (const tr of generatedTransitions) {
+    const key = `${tr.sourceId}->${tr.targetId}`;
+    const existing = pairToSymbols.get(key);
+    if (existing) {
+      if (!existing.symbols.includes(tr.symbol)) {
+        existing.symbols.push(tr.symbol);
+      }
+    } else {
+      pairToSymbols.set(key, {
+        sourceId: tr.sourceId,
+        targetId: tr.targetId,
+        symbols: [tr.symbol],
+      });
+    }
+  }
+
+  for (const entry of pairToSymbols.values()) {
     dfaEdges.push({
       id: `dfa_e${edgeCounter++}`,
-      sourceNodeId: tr.sourceId,
-      targetNodeId: tr.targetId,
-      label: tr.symbol,
+      sourceNodeId: entry.sourceId,
+      targetNodeId: entry.targetId,
+      label: entry.symbols.sort().join(', '),
     });
   }
 

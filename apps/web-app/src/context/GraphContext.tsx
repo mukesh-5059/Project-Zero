@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useReducer, useCallback, useMemo } from 'react';
 import type { StateNode, TransitionEdge, CanvasTool } from '@project-zero/canvas-renderer';
 import { FiniteAutomaton5Tuple, AutomatonType } from '@project-zero/shared';
-import { analyzeDFACompleteness, DFACompletenessResult, DFAMinimizationResult, RegexToNFAResult } from '@project-zero/core-solver';
+import { analyzeDFACompleteness, DFACompletenessResult, DFAMinimizationResult, RegexToNFAResult, expandSolverEdges } from '@project-zero/core-solver';
 
 // ---------------------------------------------------------------------------
 // State shape & History snapshot
@@ -710,9 +710,12 @@ export const GraphProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const getInitialState = useCallback(() => state.nodes.find((n) => n.isInitial), [state.nodes]);
   const getAcceptingStates = useCallback(() => state.nodes.filter((n) => n.isAccepting), [state.nodes]);
   const getAlphabet = useCallback(() => {
-    const rawSymbols = state.edges.map((e) => e.label).filter((l) => l && l.trim().length > 0);
-    return Array.from(new Set(rawSymbols)).sort();
-  }, [state.edges]);
+    const expanded = expandSolverEdges(state.edges, state.machineType);
+    const rawSymbols = expanded
+      .map((e) => e.label)
+      .filter((l) => l && l.trim().length > 0 && l !== 'ε' && l !== 'λ');
+    return Array.from(new Set(rawSymbols.map((s) => s.trim()))).sort();
+  }, [state.edges, state.machineType]);
 
   const getOutgoingTransitions = useCallback(
     (stateId: string) => state.edges.filter((e) => e.sourceNodeId === stateId),

@@ -33,11 +33,11 @@ export const MinimizationExplanationView: React.FC = () => {
     (lastMinimizationResult ? 'minimization' : lastRegexResult ? 'regex' : 'minimization');
 
   const handleRunMinimization = () => {
-    if (machineType !== 'DFA') return;
+    if (machineType !== 'DFA' && machineType !== 'FA') return;
     const res = minimizeDFA({ nodes, edges: expandSolverEdges(edges, 'FA') });
     setLastMinimizationResult(res);
     if (res.success && !res.isAlreadyMinimal && res.nodes.length > 0) {
-      replaceMachine([...res.nodes], [...res.edges], 'DFA');
+      replaceMachine([...res.nodes], [...res.edges], 'FA');
     }
   };
 

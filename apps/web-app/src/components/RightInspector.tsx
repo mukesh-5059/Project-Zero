@@ -187,6 +187,7 @@ export const RightInspector: React.FC = () => {
             </button>
 
             <button
+              id="btn-ai-analyze"
               title="Formal Machine Analysis"
               onClick={() => setActiveInspectorTab('analysis')}
               className={`flex-1 py-1.5 px-1.5 flex items-center justify-center space-x-1 border-b-2 font-medium transition-all outline-none shrink-0 ${

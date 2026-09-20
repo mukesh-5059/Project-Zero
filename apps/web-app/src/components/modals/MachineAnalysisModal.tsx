@@ -157,7 +157,7 @@ export const MachineAnalysisModal: React.FC<AnalysisModalProps> = ({ isOpen, onC
             </div>
           )}
 
-          {/* AI Teaching & Pedagogical Explanation Section (commented out for later)
+          {/* AI Teaching & Pedagogical Explanation Section */}
           <div className="border-t border-border-subtle pt-3 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-1.5 text-txt-primary font-bold">
@@ -190,7 +190,6 @@ export const MachineAnalysisModal: React.FC<AnalysisModalProps> = ({ isOpen, onC
               </div>
             )}
           </div>
-          */}
         </div>
       </div>
     </div>
