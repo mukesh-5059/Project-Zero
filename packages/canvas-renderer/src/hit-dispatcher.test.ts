@@ -129,10 +129,36 @@ describe('HitDispatcher Subsystem & Mathematical Bézier Hit Testing', () => {
       expect(hitBoundary?.id).toBe('e_straight');
     });
 
-    // 10. Near-miss just outside tolerance (8.5px)
-    it('10. rejects clicks at 8.5px strictly outside 8.0px tolerance', () => {
-      const nearMiss = hitDispatcher.hitTestEdge([e_straight], [q0, q1], { x: 100, y: 8.5 }, 8.0);
+    // 10. Near-miss just outside tolerance (-8.5px, away from label pill)
+    it('10. rejects clicks at -8.5px strictly outside 8.0px tolerance', () => {
+      const nearMiss = hitDispatcher.hitTestEdge([e_straight], [q0, q1], { x: 100, y: -8.5 }, 8.0);
       expect(nearMiss).toBeNull();
+    });
+
+    // 11. Label pill hit testing
+    it('11. hits edge when clicking directly on the transition label pill', () => {
+      // e_straight label 'a' is anchored at (100, 0) and offset along normal (0, 1) to (100, 14)
+      const hitLabelCenter = hitDispatcher.hitTestEdge([e_straight], [q0, q1], { x: 100, y: 14 });
+      expect(hitLabelCenter?.id).toBe('e_straight');
+
+      const hitLabelEdge = hitDispatcher.hitTestEdge([e_straight], [q0, q1], { x: 106, y: 12 });
+      expect(hitLabelEdge?.id).toBe('e_straight');
+
+      // Point far away from both curve and label pill misses
+      const missLabel = hitDispatcher.hitTestEdge([e_straight], [q0, q1], { x: 100, y: 50 });
+      expect(missLabel).toBeNull();
+    });
+
+    // 12. Zoom-scaled tolerance test
+    it('12. scales edge hit tolerance based on zoom', () => {
+      // At zoom 0.5 (zoomed out), screen tolerance 8px corresponds to 16px world tolerance
+      const zoomedOutTolerance = HitDispatcher.DEFAULT_EDGE_HIT_TOLERANCE / 0.5; // 16px
+      const hitZoomedOut = hitDispatcher.hitTestEdge([e_straight], [q0, q1], { x: 100, y: -12 }, zoomedOutTolerance);
+      expect(hitZoomedOut?.id).toBe('e_straight');
+
+      // At standard zoom 1.0, -12px is outside 8px tolerance
+      const missStandard = hitDispatcher.hitTestEdge([e_straight], [q0, q1], { x: 100, y: -12 }, 8.0);
+      expect(missStandard).toBeNull();
     });
   });
 

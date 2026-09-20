@@ -230,8 +230,10 @@ export class EdgeRenderer {
     const strokeWidth = Math.max(1, baseWidth * dpr);
     const strokeColor = edge.isExecutionHighlighted
       ? '#F97316'
-      : edge.isSelected || edge.isHovered
+      : edge.isSelected
       ? this.theme.borderFocus
+      : edge.isHovered
+      ? this.theme.accentHover
       : edge.color ?? this.theme.edgeStroke;
 
     const pStart = camera.worldToScreen(geometry.curve.start);

@@ -8,6 +8,7 @@
  */
 
 import { Point2D, distanceBetween, pointToSegmentDistance } from '../math/point2d';
+import { containsPoint, expandBoundingBox } from '../math/bounding-box';
 import { StateNode } from '../state/state-node';
 import { containsPointInNode, getNodeRadius } from '../state/state-geometry';
 import { TransitionEdge } from '../edge/edge-transition';
@@ -15,6 +16,7 @@ import {
   computeStraightEdgeGeometry,
   computeCurvedEdgeGeometry,
   computeSelfLoopGeometry,
+  computeEdgeLabelBoundingBox,
   evaluateCubicBezierPoint,
   estimateCubicBezierArcLength,
   EdgePathGeometry,
@@ -100,6 +102,9 @@ export class HitDispatcher {
       return nodes.find((n) => n.id === id);
     };
 
+    let bestEdge: TransitionEdge | null = null;
+    let bestDistance = Infinity;
+
     for (let i = edges.length - 1; i >= 0; i--) {
       const edge = edges[i];
       const source = getNodeById(edge.sourceNodeId);
@@ -125,12 +130,30 @@ export class HitDispatcher {
         geometry = computeStraightEdgeGeometry(source, sourceRadius, target, targetRadius);
       }
 
-      // 1. Test Arrowhead Tip distance
-      if (distanceBetween(geometry.arrowheadTip, worldPoint) <= tolerance + 4) {
-        return edge;
+      let edgeMinDist = Infinity;
+
+      // 1. Direct hit on Edge Label Pill (scaled distance so closer center wins)
+      if (edge.label && edge.label.trim().length > 0) {
+        const labelBox = computeEdgeLabelBoundingBox(geometry, edge.label);
+        if (containsPoint(labelBox, worldPoint)) {
+          const labelCenter = {
+            x: (labelBox.minX + labelBox.maxX) / 2,
+            y: (labelBox.minY + labelBox.maxY) / 2,
+          };
+          const distToCenter = distanceBetween(labelCenter, worldPoint);
+          // Scale by 0.001 so label pill hits take absolute priority (< 0.1) over external curves,
+          // while allowing nearest label center to break ties cleanly.
+          edgeMinDist = Math.min(edgeMinDist, distToCenter * 0.001);
+        }
       }
 
-      // 2. Early bounding box rejection with tolerance buffer
+      // 2. Test Arrowhead Tip distance
+      const tipDist = distanceBetween(geometry.arrowheadTip, worldPoint);
+      if (tipDist <= tolerance + 4) {
+        edgeMinDist = Math.min(edgeMinDist, tipDist);
+      }
+
+      // 3. Early bounding box rejection with tolerance buffer
       const minX =
         Math.min(
           geometry.curve.start.x,
@@ -161,32 +184,35 @@ export class HitDispatcher {
         ) + tolerance;
 
       if (
-        worldPoint.x < minX ||
-        worldPoint.x > maxX ||
-        worldPoint.y < minY ||
-        worldPoint.y > maxY
+        worldPoint.x >= minX &&
+        worldPoint.x <= maxX &&
+        worldPoint.y >= minY &&
+        worldPoint.y <= maxY
       ) {
-        continue;
+        // 4. Adaptive Bézier subdivision with point-to-segment distance testing
+        const curveLength = estimateCubicBezierArcLength(geometry.curve);
+        const steps = this.calculateAdaptiveSteps(curveLength, tolerance);
+
+        let prevPoint = evaluateCubicBezierPoint(geometry.curve, 0);
+        for (let s = 1; s <= steps; s++) {
+          const t = s / steps;
+          const currentPoint = evaluateCubicBezierPoint(geometry.curve, t);
+          const segDist = pointToSegmentDistance(worldPoint, prevPoint, currentPoint);
+          if (segDist < edgeMinDist) {
+            edgeMinDist = segDist;
+          }
+          prevPoint = currentPoint;
+        }
       }
 
-      // 3. Adaptive Bézier subdivision with point-to-segment distance testing
-      const curveLength = estimateCubicBezierArcLength(geometry.curve);
-      const steps = this.calculateAdaptiveSteps(curveLength, tolerance);
-
-      let prevPoint = evaluateCubicBezierPoint(geometry.curve, 0);
-      for (let s = 1; s <= steps; s++) {
-        const t = s / steps;
-        const currentPoint = evaluateCubicBezierPoint(geometry.curve, t);
-
-        if (pointToSegmentDistance(worldPoint, prevPoint, currentPoint) <= tolerance) {
-          return edge;
-        }
-
-        prevPoint = currentPoint;
+      // Update nearest candidate if within tolerance
+      if (edgeMinDist <= tolerance && edgeMinDist < bestDistance) {
+        bestDistance = edgeMinDist;
+        bestEdge = edge;
       }
     }
 
-    return null;
+    return bestEdge;
   }
 
   /**

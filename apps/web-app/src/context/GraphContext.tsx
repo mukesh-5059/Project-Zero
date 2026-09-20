@@ -387,6 +387,7 @@ function graphReducer(state: GraphState, action: GraphAction): GraphState {
     }
 
     case 'SET_SELECTION':
+      console.log('[GraphContext] SET_SELECTION:', { nodeIds: action.nodeIds, edgeIds: action.edgeIds });
       return {
         ...state,
         selectedNodeIds: action.nodeIds,

@@ -4,13 +4,14 @@
  */
 
 import { Point2D, distanceBetween, normalizeVector } from '../math/point2d';
-import { BoundingBox2D, createBoundingBox } from '../math/bounding-box';
+import { BoundingBox2D, createBoundingBox, mergeBoundingBoxes } from '../math/bounding-box';
 import {
   DEFAULT_ARROWHEAD_LENGTH,
   DEFAULT_ARROWHEAD_WIDTH,
   DEFAULT_SELF_LOOP_RADIUS,
   DEFAULT_PARALLEL_OFFSET_STEP,
   DEFAULT_LABEL_NORMAL_OFFSET,
+  DEFAULT_LABEL_BACKGROUND_PILL_PADDING,
 } from './edge-transition';
 
 export interface CubicBezierCurve {
@@ -310,9 +311,34 @@ export function computeSelfLoopGeometry(
 }
 
 /**
+ * Computes World Space bounding box for an edge's label pill.
+ */
+export function computeEdgeLabelBoundingBox(
+  geometry: EdgePathGeometry,
+  label: string,
+  padding: number = DEFAULT_LABEL_BACKGROUND_PILL_PADDING
+): BoundingBox2D {
+  const worldPos: Point2D = {
+    x: geometry.labelAnchor.x + geometry.labelNormal.x * DEFAULT_LABEL_NORMAL_OFFSET,
+    y: geometry.labelAnchor.y + geometry.labelNormal.y * DEFAULT_LABEL_NORMAL_OFFSET,
+  };
+  const textWidth = Math.max(16, label.length * 8);
+  const textHeight = 13;
+  const pillW = textWidth + padding * 2;
+  const pillH = textHeight + padding;
+
+  return createBoundingBox(
+    worldPos.x - pillW / 2,
+    worldPos.y - pillH / 2,
+    worldPos.x + pillW / 2,
+    worldPos.y + pillH / 2
+  );
+}
+
+/**
  * Computes enclosing World Space bounding box for an edge path geometry.
  */
-export function getEdgeBoundingBox(geometry: EdgePathGeometry): BoundingBox2D {
+export function getEdgeBoundingBox(geometry: EdgePathGeometry, label?: string): BoundingBox2D {
   const c = geometry.curve;
   const points = [
     c.start,
@@ -337,5 +363,12 @@ export function getEdgeBoundingBox(geometry: EdgePathGeometry): BoundingBox2D {
 
   // Margin buffer for stroke width and labels
   const margin = DEFAULT_LABEL_NORMAL_OFFSET + 20;
-  return createBoundingBox(minX - margin, minY - margin, maxX + margin, maxY + margin);
+  let box = createBoundingBox(minX - margin, minY - margin, maxX + margin, maxY + margin);
+
+  if (label && label.trim().length > 0) {
+    const labelBox = computeEdgeLabelBoundingBox(geometry, label);
+    box = mergeBoundingBoxes(box, labelBox);
+  }
+
+  return box;
 }

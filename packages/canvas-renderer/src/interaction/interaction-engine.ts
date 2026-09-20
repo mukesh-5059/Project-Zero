@@ -130,9 +130,21 @@ export class InteractionEngine {
     candidateNodes?: ReadonlyArray<StateNode>,
     candidateEdges?: ReadonlyArray<TransitionEdge>
   ): boolean {
-    const nodes = candidateNodes ?? stateRenderer.getStateNodes();
-    const edges = candidateEdges ?? edgeRenderer.getEdges();
-    const hitResult = this.hitDispatcher.evaluateHit(nodes, edges, event.worldPoint);
+    const allNodes = stateRenderer.getStateNodes();
+    const allNodesMap = new Map(allNodes.map((n) => [n.id, n]));
+    const nodes = candidateNodes && candidateNodes.length > 0 ? candidateNodes : allNodes;
+    const edges = candidateEdges && candidateEdges.length > 0 ? candidateEdges : edgeRenderer.getEdges();
+    const zoom = camera.getState().zoom;
+    const tolerance = HitDispatcher.DEFAULT_EDGE_HIT_TOLERANCE / Math.max(0.1, zoom);
+    const hitResult = this.hitDispatcher.evaluateHit(nodes, edges, event.worldPoint, tolerance, allNodesMap);
+    console.log('[InteractionEngine] pointerDown hitResult:', hitResult, {
+      allNodesCount: allNodes.length,
+      testedNodesCount: nodes.length,
+      testedEdgesCount: edges.length,
+      candidateEdgesCount: candidateEdges?.length,
+      tolerance,
+      worldPoint: event.worldPoint,
+    });
 
     let stateChanged = false;
 
@@ -160,6 +172,15 @@ export class InteractionEngine {
           ? InteractionState.DraggingSelection
           : InteractionState.DraggingNode;
 
+      this.context.hoveredNodeId = hitResult.nodeId;
+      this.context.hoveredEdgeId = null;
+      for (const n of nodes) {
+        (n as { isHovered?: boolean }).isHovered = n.id === hitResult.nodeId;
+      }
+      for (const e of edgeRenderer.getEdges()) {
+        (e as { isHovered?: boolean }).isHovered = false;
+      }
+
       this.transitionToState(nextState);
       this.dragController.startDrag(this.context, stateRenderer.getStateNodes(), event.worldPoint);
       stateChanged = true;
@@ -170,6 +191,14 @@ export class InteractionEngine {
       if (selectionChanged) {
         this.emitSelectionChanged();
       }
+      this.context.hoveredEdgeId = hitResult.edgeId;
+      this.context.hoveredNodeId = null;
+      for (const e of edgeRenderer.getEdges()) {
+        (e as { isHovered?: boolean }).isHovered = e.id === hitResult.edgeId;
+      }
+      for (const n of nodes) {
+        (n as { isHovered?: boolean }).isHovered = false;
+      }
       this.transitionToState(InteractionState.Idle);
       stateChanged = true;
     }
@@ -178,6 +207,14 @@ export class InteractionEngine {
       const selectionChanged = this.selectionController.handlePointerSelection(this.context, event, hitResult);
       if (selectionChanged) {
         this.emitSelectionChanged();
+      }
+      this.context.hoveredNodeId = null;
+      this.context.hoveredEdgeId = null;
+      for (const e of edgeRenderer.getEdges()) {
+        (e as { isHovered?: boolean }).isHovered = false;
+      }
+      for (const n of nodes) {
+        (n as { isHovered?: boolean }).isHovered = false;
       }
 
       const isAdditive = event.shiftKey || event.ctrlKey || event.metaKey;
@@ -255,9 +292,13 @@ export class InteractionEngine {
       case InteractionState.Idle:
       case InteractionState.Hover:
       default: {
-        const queryNodes = candidateNodes ?? nodes;
-        const queryEdges = candidateEdges ?? edgeRenderer.getEdges();
-        const hitResult = this.hitDispatcher.evaluateHit(queryNodes, queryEdges, event.worldPoint);
+        const allNodes = stateRenderer.getStateNodes();
+        const allNodesMap = new Map(allNodes.map((n) => [n.id, n]));
+        const queryNodes = candidateNodes && candidateNodes.length > 0 ? candidateNodes : allNodes;
+        const queryEdges = candidateEdges && candidateEdges.length > 0 ? candidateEdges : edgeRenderer.getEdges();
+        const zoom = camera.getState().zoom;
+        const tolerance = HitDispatcher.DEFAULT_EDGE_HIT_TOLERANCE / Math.max(0.1, zoom);
+        const hitResult = this.hitDispatcher.evaluateHit(queryNodes, queryEdges, event.worldPoint, tolerance, allNodesMap);
         const newHoveredNode = hitResult.type === 'node' ? hitResult.nodeId ?? null : null;
         const newHoveredEdge = hitResult.type === 'edge' ? hitResult.edgeId ?? null : null;
 
@@ -312,9 +353,13 @@ export class InteractionEngine {
       this.marqueeController.endMarquee(this.context);
       invalidated = true;
     } else if (this.state === InteractionState.CreatingEdge) {
-      const nodes = candidateNodes ?? stateRenderer.getStateNodes();
-      const queryEdges = candidateEdges ?? edges;
-      const hitResult = this.hitDispatcher.evaluateHit(nodes, queryEdges, event.worldPoint);
+      const allNodes = stateRenderer.getStateNodes();
+      const allNodesMap = new Map(allNodes.map((n) => [n.id, n]));
+      const nodes = candidateNodes && candidateNodes.length > 0 ? candidateNodes : allNodes;
+      const queryEdges = candidateEdges && candidateEdges.length > 0 ? candidateEdges : edges;
+      const zoom = _camera.getState().zoom;
+      const tolerance = HitDispatcher.DEFAULT_EDGE_HIT_TOLERANCE / Math.max(0.1, zoom);
+      const hitResult = this.hitDispatcher.evaluateHit(nodes, queryEdges, event.worldPoint, tolerance, allNodesMap);
 
       if (hitResult.type === 'node' && hitResult.nodeId) {
         this.edgePreviewController.commitEdgePreview(this.context, hitResult.nodeId, this.callbacks?.onEdgeCreated);
@@ -422,11 +467,11 @@ export class InteractionEngine {
   }
 
   private emitSelectionChanged(): void {
+    const nodeIds = this.context.getSelectedNodeIds();
+    const edgeIds = this.context.getSelectedEdgeIds();
+    console.log('[InteractionEngine] emitSelectionChanged:', { nodeIds, edgeIds });
     if (this.callbacks?.onSelectionChanged) {
-      this.callbacks.onSelectionChanged(
-        this.context.getSelectedNodeIds(),
-        this.context.getSelectedEdgeIds()
-      );
+      this.callbacks.onSelectionChanged(nodeIds, edgeIds);
     }
   }
 }

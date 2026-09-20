@@ -39,6 +39,7 @@ export class SelectionController {
         context.selectEdge(id, false);
       }
       changed = true;
+      console.log('[SelectionController] Selected edge:', id, 'context.selectedEdgeIds:', Array.from(context.selectedEdgeIds));
     } else if (hitResult.type === 'background') {
       if (!isMultiSelect && !isAdditive) {
         if (context.selectedNodeIds.size > 0 || context.selectedEdgeIds.size > 0) {

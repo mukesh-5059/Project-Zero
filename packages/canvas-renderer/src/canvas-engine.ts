@@ -622,6 +622,10 @@ export class CanvasEngine implements ICanvasEngine {
   // ---------------------------------------------------------------------------
 
   public setStateNodes(nodes: ReadonlyArray<StateNode>): void {
+    const currentHoveredNodeId = this.interactionEngine.getContext().hoveredNodeId;
+    for (let i = 0; i < nodes.length; i++) {
+      (nodes[i] as { isHovered?: boolean }).isHovered = nodes[i].id === currentHoveredNodeId;
+    }
     this.stateRenderer.setStateNodes(nodes);
     for (const node of this.spatialIndex.getAllNodes()) {
       this.spatialIndex.removeNode(node.id);
@@ -678,6 +682,10 @@ export class CanvasEngine implements ICanvasEngine {
   }
 
   public setTransitionEdges(edges: ReadonlyArray<TransitionEdge>): void {
+    const currentHoveredEdgeId = this.interactionEngine.getContext().hoveredEdgeId;
+    for (let i = 0; i < edges.length; i++) {
+      (edges[i] as { isHovered?: boolean }).isHovered = edges[i].id === currentHoveredEdgeId;
+    }
     this.edgeRenderer.setEdges(edges);
     for (const edge of this.spatialIndex.getAllEdges()) {
       this.spatialIndex.removeEdge(edge.id);
@@ -804,11 +812,22 @@ export class CanvasEngine implements ICanvasEngine {
   public handlePointerDown(rawEvent: MouseEvent | PointerEvent | TouchEvent): boolean {
     const event = this.toCanvasPointerEvent(rawEvent);
     const tool = this.toolController.getTool();
+    const zoom = this.camera.getState().zoom;
+    const effectiveTolerance = HitDispatcher.DEFAULT_EDGE_HIT_TOLERANCE / Math.max(0.1, zoom);
 
     const spatialResult = this.spatialIndex.queryPoint(
       event.worldPoint,
-      HitDispatcher.DEFAULT_EDGE_HIT_TOLERANCE + 40
+      effectiveTolerance + 40
     );
+    console.log('[CanvasEngine] pointerDown:', {
+      tool,
+      zoom,
+      effectiveTolerance,
+      worldPoint: event.worldPoint,
+      spatialNodes: spatialResult.nodes.map((n) => n.id),
+      spatialEdges: spatialResult.edges.map((e) => e.id),
+      totalRenderedEdges: this.edgeRenderer.getEdges().map((e) => e.id),
+    });
 
     // Tool Mode 1: Add State (single click drops node)
     if (tool === 'add-state') {
@@ -825,7 +844,12 @@ export class CanvasEngine implements ICanvasEngine {
         this.toolController.requestEraseNode(hitNode.id);
         return true;
       }
-      const hitEdge = hitDispatcher.hitTestEdge(spatialResult.edges, this.stateRenderer.getStateNodes(), event.worldPoint);
+      const hitEdge = hitDispatcher.hitTestEdge(
+        spatialResult.edges,
+        this.stateRenderer.getStateNodes(),
+        event.worldPoint,
+        effectiveTolerance
+      );
       if (hitEdge) {
         this.toolController.requestEraseEdge(hitEdge.id);
         return true;
@@ -840,26 +864,19 @@ export class CanvasEngine implements ICanvasEngine {
       spatialResult.nodes,
       spatialResult.edges
     );
-    this.damageTracker.addDirtyScreenBox({
-      minX: event.screenPoint.x - 50,
-      minY: event.screenPoint.y - 50,
-      maxX: event.screenPoint.x + 50,
-      maxY: event.screenPoint.y + 50,
-      width: 100,
-      height: 100,
-      centerX: event.screenPoint.x,
-      centerY: event.screenPoint.y,
-    });
+    this.damageTracker.invalidateAll();
     this.invalidate();
     return handled;
   }
 
   public handlePointerMove(rawEvent: MouseEvent | PointerEvent | TouchEvent): boolean {
     const event = this.toCanvasPointerEvent(rawEvent);
+    const zoom = this.camera.getState().zoom;
+    const effectiveTolerance = HitDispatcher.DEFAULT_EDGE_HIT_TOLERANCE / Math.max(0.1, zoom);
 
     const spatialResult = this.spatialIndex.queryPoint(
       event.worldPoint,
-      HitDispatcher.DEFAULT_EDGE_HIT_TOLERANCE + 40
+      effectiveTolerance + 40
     );
 
     // Evaluate smart snap alignment if dragging a single node
@@ -895,27 +912,7 @@ export class CanvasEngine implements ICanvasEngine {
     );
 
     if (changed || this.interactionEngine.getState() !== 'Idle') {
-      const currentState = this.interactionEngine.getState();
-      if (
-        currentState === 'Panning' ||
-        currentState === 'DraggingNode' ||
-        currentState === 'DraggingSelection' ||
-        currentState === 'MarqueeSelection' ||
-        currentState === 'CreatingEdge'
-      ) {
-        this.damageTracker.invalidateAll();
-      } else {
-        this.damageTracker.addDirtyScreenBox({
-          minX: event.screenPoint.x - 50,
-          minY: event.screenPoint.y - 50,
-          maxX: event.screenPoint.x + 50,
-          maxY: event.screenPoint.y + 50,
-          width: 100,
-          height: 100,
-          centerX: event.screenPoint.x,
-          centerY: event.screenPoint.y,
-        });
-      }
+      this.damageTracker.invalidateAll();
       this.invalidate();
     }
     return changed;

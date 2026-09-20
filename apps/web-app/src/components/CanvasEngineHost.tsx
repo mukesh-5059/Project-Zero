@@ -97,6 +97,11 @@ export const CanvasEngineHost: React.FC = () => {
         isExecutionHighlighted: isDfaMatch || isNfaMatch,
       };
     });
+    console.log('[CanvasEngineHost] syncing highlightedEdges to engine:', {
+      totalEdges: highlightedEdges.length,
+      selectedEdgeIds,
+      highlightedEdgesWithSelected: highlightedEdges.filter((e) => e.isSelected).map((e) => e.id),
+    });
     engineRef.current?.setTransitionEdges(highlightedEdges);
   }, [edges, activeEdgeId, activeStateIds, selectedEdgeIds, currentStep]);
 
@@ -125,6 +130,7 @@ export const CanvasEngineHost: React.FC = () => {
     // -----------------------------------------------------------------------
 
     const unsubSelect = engine.subscribeSelection((nodeIds, edgeIds) => {
+      console.log('[CanvasEngineHost] engine.subscribeSelection callback received:', { nodeIds, edgeIds });
       setSelection(nodeIds, edgeIds);
     });
 
@@ -339,12 +345,6 @@ export const CanvasEngineHost: React.FC = () => {
     engineRef.current?.setTool(activeTool);
   }, [activeTool]);
 
-  // ---------------------------------------------------------------------------
-  // Edges effect — push GraphContext edges into engine on every change
-  // ---------------------------------------------------------------------------
-  useEffect(() => {
-    engineRef.current?.setTransitionEdges(edges);
-  }, [edges]);
 
   // Handle modal confirmation
   const handleConfirmTransition = (data: ConfirmTransitionData) => {
