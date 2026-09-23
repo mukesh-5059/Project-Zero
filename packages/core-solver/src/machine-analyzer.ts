@@ -287,7 +287,7 @@ export function explainExecutionRun(
       const derivStr = derivations.map((d) => d.formalNotation).join('\n');
       const finalStep = execResult.steps[execResult.steps.length - 1] as DFAExecutionStep;
       const finalStateLabel =
-        execResult.finalStateLabel ||
+        ('finalStateLabel' in execResult ? (execResult as any).finalStateLabel : undefined) ||
         finalStep.nextStateLabel ||
         finalStep.nextStateId ||
         finalStep.currentStateLabel ||

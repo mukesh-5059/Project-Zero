@@ -8,7 +8,7 @@
  */
 
 import { Point2D, distanceBetween, pointToSegmentDistance } from '../math/point2d';
-import { containsPoint, expandBoundingBox } from '../math/bounding-box';
+import { containsPoint } from '../math/bounding-box';
 import { StateNode } from '../state/state-node';
 import { containsPointInNode, getNodeRadius } from '../state/state-geometry';
 import { TransitionEdge } from '../edge/edge-transition';

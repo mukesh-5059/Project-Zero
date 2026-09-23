@@ -4,12 +4,17 @@
   "private": true,
   "description": "Project Zero: AI-Powered Interactive Learning Platform for Models of Computation",
   "scripts": {
-    "build": "npx pnpm exec turbo run build",
+    "build": "pnpm --filter @project-zero/web-app build",
     "dev": "npm --prefix apps/web-app run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.10.0",
